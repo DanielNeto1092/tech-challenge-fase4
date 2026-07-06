@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-label="Evidências do Console AWS">
+  <defs>
+    <style>
+      .bg{fill:#F7F2EA}.teal{fill:#176B87}.amber{fill:#C47F2C}.green{fill:#2E7D32}.dark{fill:#101827}.head{fill:#172033}
+      .title{font-family:Georgia,serif;font-size:54px;font-weight:700;fill:#111827}.label{font-family:Aptos,Arial,sans-serif;font-size:15px;font-weight:700;fill:#667085;letter-spacing:2px}
+      .h{font-family:Aptos,Arial,sans-serif;font-size:18px;font-weight:700;fill:#E8EEF5}.body{font-family:Aptos,Arial,sans-serif;font-size:18px;fill:#E8EEF5}.muted{font-family:Aptos,Arial,sans-serif;font-size:15px;fill:#AFC3D6}
+      .card{fill:#101827;stroke:#D8CCBB;stroke-width:1}
+    </style>
+  </defs>
+  <rect class="bg" width="1920" height="1080"/>
+  <rect class="teal" width="1920" height="14"/>
+  <text class="label" x="96" y="108">SENTINELA AI | EVIDÊNCIAS AWS</text>
+  <text class="title" x="96" y="188">Prints técnicos da execução no Console AWS</text>
+
+  <g transform="translate(110,270)">
+    <rect class="card" width="500" height="190"/><rect class="head" width="500" height="40"/>
+    <text class="h" x="24" y="27">CloudFormation</text><circle class="green" cx="36" cy="83" r="8"/>
+    <text class="body" x="62" y="90">Stack: sentinela-ai-free-tier</text><circle cx="36" cy="122" r="8" fill="#5A6B7A"/>
+    <text class="body" x="62" y="129">Status: CREATE_COMPLETE</text><circle cx="36" cy="161" r="8" fill="#5A6B7A"/>
+    <text class="body" x="62" y="168">Região: us-east-1</text>
+  </g>
+  <g transform="translate(710,270)">
+    <rect class="card" width="500" height="190"/><rect class="head" width="500" height="40"/>
+    <text class="h" x="24" y="27">Amazon S3</text><circle class="teal" cx="36" cy="83" r="8"/>
+    <text class="body" x="62" y="90">Bucket: sentinela-ai-...-reports</text><circle cx="36" cy="122" r="8" fill="#5A6B7A"/>
+    <text class="body" x="62" y="129">Objeto: evidence_text_high_risk.json</text><circle cx="36" cy="161" r="8" fill="#5A6B7A"/>
+    <text class="body" x="62" y="168">Prefixo: results/demo-001/</text>
+  </g>
+  <g transform="translate(1310,270)">
+    <rect class="card" width="500" height="190"/><rect class="head" width="500" height="40"/>
+    <text class="h" x="24" y="27">DynamoDB</text><circle class="green" cx="36" cy="83" r="8"/>
+    <text class="body" x="62" y="90">Tabela: sentinela-ai-reports</text><circle cx="36" cy="122" r="8" fill="#5A6B7A"/>
+    <text class="body" x="62" y="129">Itens retornados: 1</text><circle cx="36" cy="161" r="8" fill="#5A6B7A"/>
+    <text class="body" x="62" y="168">score=0.629 | level=monitorar</text>
+  </g>
+  <g transform="translate(110,570)">
+    <rect class="card" width="500" height="190"/><rect class="head" width="500" height="40"/>
+    <text class="h" x="24" y="27">Lambda Monitor</text><circle class="amber" cx="36" cy="83" r="8"/>
+    <text class="body" x="62" y="90">Função: sentinela-ai-report-indexer</text><circle cx="36" cy="122" r="8" fill="#5A6B7A"/>
+    <text class="body" x="62" y="129">Trigger: S3</text><circle cx="36" cy="161" r="8" fill="#5A6B7A"/>
+    <text class="body" x="62" y="168">Invocações registradas</text>
+  </g>
+  <g transform="translate(710,570)">
+    <rect class="card" width="500" height="190"/><rect class="head" width="500" height="40"/>
+    <text class="h" x="24" y="27">CloudWatch Logs</text><circle class="amber" cx="36" cy="83" r="8"/>
+    <text class="body" x="62" y="90">Log group: /aws/lambda/...</text><circle cx="36" cy="122" r="8" fill="#5A6B7A"/>
+    <text class="body" x="62" y="129">START / END / REPORT</text><circle cx="36" cy="161" r="8" fill="#5A6B7A"/>
+    <text class="body" x="62" y="168">RequestId e duração registrados</text>
+  </g>
+  <g transform="translate(1310,570)">
+    <rect class="card" width="500" height="190"/><rect class="head" width="500" height="40"/>
+    <text class="h" x="24" y="27">RiskReport JSON</text><circle class="teal" cx="36" cy="83" r="8"/>
+    <text class="body" x="62" y="90">multimodal_score_0_1 = 0.629</text><circle cx="36" cy="122" r="8" fill="#5A6B7A"/>
+    <text class="body" x="62" y="129">level = medium</text><circle cx="36" cy="161" r="8" fill="#5A6B7A"/>
+    <text class="body" x="62" y="168">labels e evidências auditáveis</text>
+  </g>
+
+  <text class="muted" x="110" y="850">Use este arquivo como imagem no Canva ou substitua por prints PNG reais, se preferir evidência visual literal.</text>
+</svg>

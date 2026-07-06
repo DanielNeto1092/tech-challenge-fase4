@@ -1,0 +1,36 @@
+{
+  "total_rows": 8571,
+  "available_videos": 8571,
+  "by_split": {
+    "test": 1784,
+    "train": 5358,
+    "validation": 1429
+  },
+  "label_distributions": {
+    "boredom": {
+      "0": 3702,
+      "1": 2656,
+      "2": 1886,
+      "3": 327
+    },
+    "engagement": {
+      "0": 61,
+      "1": 440,
+      "2": 4312,
+      "3": 3758
+    },
+    "confusion": {
+      "0": 5758,
+      "1": 1994,
+      "2": 720,
+      "3": 99
+    },
+    "frustration": {
+      "0": 6629,
+      "1": 1528,
+      "2": 329,
+      "3": 85
+    }
+  },
+  "recommended_use": "Public visual-affective baseline for engagement, boredom, confusion and frustration. Use as indirect wellbeing/attention context, not as trauma or abuse labels."
+}

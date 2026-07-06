@@ -1,0 +1,74 @@
+{
+  "project": "Tech Challenge Fase 4 - Multimodal Safety Monitor",
+  "strategy": "Deteccao indireta de sofrimento psicologico e vulnerabilidade feminina; nao diagnostico de violencia domestica.",
+  "local_datasets": [
+    {
+      "name": "RAVDESS",
+      "path": "github/ravdess",
+      "status": "available_local",
+      "modalities": ["audio", "video"],
+      "recommended_use": "bootstrap de reconhecimento emocional"
+    },
+    {
+      "name": "CREMA-D",
+      "path": "github/crema-d",
+      "status": "available_local",
+      "modalities": ["audio", "video"],
+      "recommended_use": "fine-tuning emocional com diversidade de atores"
+    },
+    {
+      "name": "UCF-Crime/Anomaly frames",
+      "path": "archive",
+      "status": "available_local",
+      "modalities": ["video"],
+      "recommended_use": "anomalia visual e baseline de movimento; usar com cautela por nao ser especifico de violencia domestica"
+    },
+    {
+      "name": "DAiSEE",
+      "path": "archive/DAiSEE",
+      "status": "available_local",
+      "modalities": ["video"],
+      "recommended_use": "bem-estar visual indireto por boredom, engagement, confusion e frustration"
+    },
+    {
+      "name": "UC3M4Safety audiovisual stimuli metadata",
+      "path": "doi-10.21950-luo1iz",
+      "status": "available_local",
+      "modalities": ["metadata"],
+      "recommended_use": "fundamentacao teorica e selecao de estimulos ligados a violencia de genero"
+    },
+    {
+      "name": "WEMAC signal processing repository",
+      "path": "wemac_dataset_signal_processing-master",
+      "status": "available_local",
+      "modalities": ["code", "audio_features_reference"],
+      "recommended_use": "referencia para processamento de fala no WEMAC"
+    }
+  ],
+  "external_datasets": [
+    {
+      "name": "WEMAC physiological signals",
+      "doi": "10.21950/FNUHKE",
+      "status": "public_encrypted_files_downloadable_dua_required_for_password",
+      "target_path": "data/external/wemac/physiological_signals"
+    },
+    {
+      "name": "WEMAC audio features",
+      "doi": "10.21950/XKHCCW",
+      "status": "public_encrypted_files_downloadable_dua_required_for_password",
+      "target_path": "data/external/wemac/audio_features"
+    },
+    {
+      "name": "WEMAC emotional labelling",
+      "doi": "10.21950/RYUCLV",
+      "status": "public_encrypted_files_downloadable_dua_required_for_password",
+      "target_path": "data/external/wemac/emotional_labelling"
+    },
+    {
+      "name": "DAIC-WOZ",
+      "official_url": "https://dcapswoz.ict.usc.edu/",
+      "status": "access_request_required",
+      "notes": "Distribuicao limitada a pesquisadores academicos/sem fins lucrativos mediante formulario da USC ICT."
+    }
+  ]
+}

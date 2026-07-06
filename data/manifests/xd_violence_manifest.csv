@@ -1,0 +1,17 @@
+file_path,dataset,modality,label_original,label_aurora,split,source_url,notes
+video\xd-violance\abuse\abuse1.mp4,XD-Violence,video,abuse,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\abuse\abuse2.mp4,XD-Violence,video,abuse,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\car accident\car1.mp4,XD-Violence,video,car_accident,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\car accident\car2.mp4,XD-Violence,video,car_accident,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\explosion\explosion1.mp4,XD-Violence,video,explosion,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\explosion\explosion2.mp4,XD-Violence,video,explosion,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\fighting\fighting1.mp4,XD-Violence,video,fighting,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\fighting\fighting2.mp4,XD-Violence,video,fighting,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\normal activities\n1.mp4,XD-Violence,video,normal_activities,normal_or_low_risk,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\normal activities\n2.mp4,XD-Violence,video,normal_activities,normal_or_low_risk,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\normal activities\n3.mp4,XD-Violence,video,normal_activities,normal_or_low_risk,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\normal activities\n4.mp4,XD-Violence,video,normal_activities,normal_or_low_risk,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\riot\riot1.mp4,XD-Violence,video,riot,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\riot\riot2.mp4,XD-Violence,video,riot,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\shooting\shooting1.mp4,XD-Violence,video,shooting,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
+video\xd-violance\shooting\shooting2.mp4,XD-Violence,video,shooting,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.

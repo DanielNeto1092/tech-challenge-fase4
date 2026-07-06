@@ -1,0 +1,11 @@
+{
+  "generated_at": "2026-05-18T16:46:25.608095",
+  "manifests": [
+    "data\\manifests\\ravdess_manifest.csv",
+    "data\\manifests\\eatd_corpus_manifest.csv",
+    "data\\manifests\\daisee_manifest.csv",
+    "data\\manifests\\maternal_health_risk_manifest.csv",
+    "data\\manifests\\cardiotocography_manifest.csv",
+    "data\\manifests\\xd_violence_manifest.csv"
+  ]
+}

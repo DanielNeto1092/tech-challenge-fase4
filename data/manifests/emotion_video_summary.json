@@ -1,0 +1,47 @@
+{
+  "total_files": 10322,
+  "by_dataset": {
+    "crema-d": 7442,
+    "ravdess": 2880
+  },
+  "by_split": {
+    "test": 1299,
+    "train": 7439,
+    "validation": 1584
+  },
+  "by_emotion": {
+    "angry": 1655,
+    "calm": 384,
+    "disgust": 1655,
+    "fearful": 1655,
+    "happy": 1655,
+    "neutral": 1279,
+    "sad": 1655,
+    "surprised": 384
+  },
+  "by_dataset_emotion": {
+    "crema-d": {
+      "angry": 1271,
+      "disgust": 1271,
+      "fearful": 1271,
+      "happy": 1271,
+      "neutral": 1087,
+      "sad": 1271
+    },
+    "ravdess": {
+      "angry": 384,
+      "calm": 384,
+      "disgust": 384,
+      "fearful": 384,
+      "happy": 384,
+      "neutral": 192,
+      "sad": 384,
+      "surprised": 384
+    }
+  },
+  "ravdess_female_files": 1440,
+  "notes": [
+    "RAVDESS gender is inferred from the official actor id convention: odd=male, even=female.",
+    "CREMA-D gender is left unknown because this folder does not include demographic metadata."
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "project_positioning": "Sistema multimodal de inferencia de vulnerabilidade emocional, sofrimento psicologico e risco comportamental feminino.",
+  "fusion_strategy": {
+    "mvp": "late_fusion_weighted_by_confidence",
+    "future": "attention_fusion",
+    "reason": "datasets heterogeneos, modalidades faltantes e sincronizacao temporal dificil"
+  },
+  "datasets": [
+    {
+      "name": "RAVDESS",
+      "group": "core_emocional",
+      "status": "local",
+      "role": "baseline emocional audiovisual"
+    },
+    {
+      "name": "CREMA-D",
+      "group": "core_emocional",
+      "status": "local",
+      "role": "baseline emocional audiovisual com maior diversidade"
+    },
+    {
+      "name": "MELD",
+      "group": "core_emocional",
+      "status": "recommended",
+      "role": "dialogo emocional multimodal e NLP contextual"
+    },
+    {
+      "name": "IEMOCAP",
+      "group": "core_emocional",
+      "status": "access_controlled",
+      "role": "dialogo emocional diadico mais natural"
+    },
+    {
+      "name": "DAIC-WOZ",
+      "group": "saude_mental",
+      "status": "access_controlled",
+      "role": "entrevistas clinicas e sinais depressivos multimodais"
+    },
+    {
+      "name": "AVEC",
+      "group": "saude_mental",
+      "status": "recommended",
+      "role": "benchmarks de depressao, afeto e distress"
+    },
+    {
+      "name": "MuSe",
+      "group": "saude_mental",
+      "status": "recommended",
+      "role": "stress, distress, sentimento e aprendizado multimodal"
+    },
+    {
+      "name": "CMU-MOSEI",
+      "group": "generalizacao_natural",
+      "status": "recommended",
+      "role": "sentimento e emocao em videos naturais"
+    },
+    {
+      "name": "SEWA",
+      "group": "generalizacao_natural",
+      "status": "access_request",
+      "role": "comportamento espontaneo multicultural"
+    },
+    {
+      "name": "DAiSEE",
+      "group": "anomalia_comportamento",
+      "status": "local",
+      "role": "bem-estar visual indireto"
+    },
+    {
+      "name": "UCF-Crime",
+      "group": "anomalia_comportamento",
+      "status": "local",
+      "role": "encoder visual, motion anomaly pretraining e temporal anomaly learning"
+    },
+    {
+      "name": "Hockey Fight Dataset",
+      "group": "violence_baseline",
+      "status": "recommended_kaggle",
+      "role": "baseline simples violence/non-violence em contexto esportivo"
+    },
+    {
+      "name": "Real Life Violence Situations",
+      "group": "violence_baseline",
+      "status": "recommended_kaggle",
+      "role": "baseline violence/non-violence com videos reais"
+    },
+    {
+      "name": "UCA",
+      "group": "video_language_anomaly",
+      "status": "recommended",
+      "role": "anotacoes semanticas e temporais para surveillance video-language understanding"
+    },
+    {
+      "name": "HR-Crime",
+      "group": "human_related_anomaly",
+      "status": "recommended",
+      "role": "anomalia humana derivada de UCF-Crime"
+    },
+    {
+      "name": "WEMAC",
+      "group": "perspectiva_feminina",
+      "status": "access_controlled_dua",
+      "role": "computacao afetiva multimodal com mulheres"
+    },
+    {
+      "name": "UC3M4Safety",
+      "group": "perspectiva_feminina",
+      "status": "local_metadata",
+      "role": "fundamentacao com perspectiva de genero"
+    }
+  ],
+  "do_not_use_as": {
+    "UCF-Crime": [
+      "dataset semantico principal",
+      "evidencia direta de violencia domestica",
+      "proxy de sofrimento psicologico feminino"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+# Backend-specific dependencies (FastAPI server)
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+
+# IMPORTANT: This backend imports from src/ which requires the full project dependencies.
+# Install the root requirements.txt FIRST:
+#   pip install -r ../requirements.txt
+#
+# The root requirements.txt includes: ultralytics, opencv-python, numpy, scikit-learn,
+# joblib, pyyaml, and all other ML/vision dependencies needed by the pipeline.

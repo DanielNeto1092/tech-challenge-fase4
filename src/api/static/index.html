@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sentinela AI</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Sentinela AI</h1>
+        <p>Apoio multimodal para acolhimento, bem-estar e revisão humana.</p>
+      </div>
+      <button id="refreshReports" class="iconButton" title="Atualizar relatórios">↻</button>
+    </header>
+
+    <main class="layout">
+      <section class="panel controls">
+        <div class="moduleTitle">
+          <span class="eyebrow">Entrada segura</span>
+          <h2>Análise do Caso</h2>
+        </div>
+        <label>
+          Transcrição
+          <input id="transcript" value="data/transcripts/WcDdvSYnN28.txt" />
+        </label>
+        <label>
+          Áudio WAV
+          <input id="audio_wav" value="data/audio/WcDdvSYnN28.wav" />
+        </label>
+        <label>
+          Pose JSON
+          <input id="pose_json" placeholder="data/pose/pose_keypoints.json" />
+        </label>
+        <label>
+          Vídeo para bem-estar visual
+          <input id="video_file" placeholder="archive/DAiSEE/DataSet/Test/500044/5000441001/5000441001.avi" />
+        </label>
+        <label>
+          Frames
+          <input id="frames_dir" placeholder="archive/Test/Abuse" />
+        </label>
+        <label>
+          Sequência
+          <input id="sequence" placeholder="Abuse030_x264" />
+        </label>
+        <label>
+          Calibração de movimento
+          <input id="motion_calibration" placeholder="data/motion_calibration.json" />
+        </label>
+        <label>
+          Nome do relatório
+          <input id="save_as" value="dashboard_text_audio" />
+        </label>
+        <div class="buttonRow">
+          <button id="analyzeBtn">Analisar</button>
+          <button id="videoExampleBtn" class="secondary">Exemplo Vídeo</button>
+          <button id="daiseeExampleBtn" class="secondary">Exemplo DAiSEE</button>
+        </div>
+        <p id="status" class="status"></p>
+      </section>
+
+      <section class="panel results">
+        <nav class="tabs">
+          <button class="tab active" data-tab="caseTab">Caso</button>
+          <button class="tab" data-tab="methodTab">Metodologia</button>
+          <button class="tab" data-tab="datasetTab">Datasets</button>
+          <button class="tab" data-tab="exportTab">Exportar</button>
+        </nav>
+
+        <div id="caseTab" class="tabPane active">
+        <div class="sectionHeader">
+          <div class="moduleTitle">
+            <span class="eyebrow">Síntese clínica assistida</span>
+            <h2>Resultado</h2>
+          </div>
+          <select id="reportSelect"></select>
+        </div>
+
+        <div class="notice">
+          Apoio à triagem e acolhimento. Não substitui avaliação profissional nem confirma violência ou diagnóstico.
+        </div>
+
+        <div class="scoreBand">
+          <div>
+            <span class="label">Score</span>
+            <strong id="score">--</strong>
+          </div>
+          <div>
+            <span class="label">Prioridade</span>
+            <strong id="riskLevel">--</strong>
+          </div>
+          <div>
+            <span class="label">Trilha</span>
+            <strong id="carePathway">--</strong>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="mini">
+            <span>Bem-estar</span>
+            <meter id="wellbeing" min="0" max="1"></meter>
+          </div>
+          <div class="mini">
+            <span>Sofrimento afetivo</span>
+            <meter id="distress" min="0" max="1"></meter>
+          </div>
+          <div class="mini">
+            <span>Segurança/vulnerabilidade</span>
+            <meter id="safety" min="0" max="1"></meter>
+          </div>
+          <div class="mini">
+            <span>Qualidade dos dados</span>
+            <meter id="quality" min="0" max="1"></meter>
+          </div>
+        </div>
+
+        <h3>Evidências</h3>
+        <div id="modalities" class="chips"></div>
+
+        <h3>Foco de Acolhimento</h3>
+        <ul id="reviewFocus"></ul>
+
+        <h3>Próximos Passos</h3>
+        <ul id="nextSteps"></ul>
+
+        <h3>Perguntas Cuidadosas</h3>
+        <ul id="suggestedQuestions"></ul>
+
+        <h3>Privacidade</h3>
+        <ul id="privacyChecklist"></ul>
+
+        <h3>Revisão Humana</h3>
+        <div class="reviewBox">
+          <select id="reviewStatus">
+            <option>PENDING</option>
+            <option>CONFIRMED</option>
+            <option>DISMISSED</option>
+            <option>ESCALATED</option>
+          </select>
+          <input id="reviewNotes" placeholder="Notas da revisão" />
+          <button id="saveReview" class="secondary">Registrar</button>
+        </div>
+        </div>
+
+        <div id="methodTab" class="tabPane">
+          <h2>Metodologia</h2>
+          <p class="methodText">O Sentinela usa late fusion ponderada por confiança para lidar com modalidades ausentes e bases heterogêneas.</p>
+          <div class="methodGrid">
+            <div><strong>Texto</strong><span>Sinais multi-label em português: segurança, coerção, isolamento, desesperança e sofrimento.</span></div>
+            <div><strong>Áudio</strong><span>Energia, pausas, variabilidade, ZCR e baseline emocional vocal.</span></div>
+            <div><strong>Vídeo</strong><span>Pose, movimento e bem-estar visual indireto com DAiSEE.</span></div>
+            <div><strong>Cuidado</strong><span>Trilha trauma-informada, privacidade, revisão humana e incerteza.</span></div>
+          </div>
+        </div>
+
+        <div id="datasetTab" class="tabPane">
+          <h2>Datasets</h2>
+          <ul>
+            <li><strong>RAVDESS + CREMA-D:</strong> emoção audiovisual.</li>
+            <li><strong>DAiSEE:</strong> bem-estar visual indireto.</li>
+            <li><strong>UCF-Crime:</strong> anomalia temporal e movimento, não semântica principal.</li>
+            <li><strong>WEMAC + UC3M4Safety:</strong> perspectiva feminina e fundamentação.</li>
+            <li><strong>MELD, IEMOCAP, MuSe, AVEC, DAIC-WOZ, SEWA, CMU-MOSEI, UCA, HR-Crime:</strong> roadmap de pesquisa.</li>
+          </ul>
+        </div>
+
+        <div id="exportTab" class="tabPane">
+          <h2>Artefatos</h2>
+          <div class="exportLinks">
+            <a href="/results/case_summary.html" target="_blank">Resumo do caso</a>
+            <a href="/results/experiment_report.html" target="_blank">Relatório experimental</a>
+            <a href="/results/final_academic_report.html" target="_blank">Relatório final</a>
+          </div>
+          <p class="methodText">Os arquivos também estão em <code>data/results</code> no workspace.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

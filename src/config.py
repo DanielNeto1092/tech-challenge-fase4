@@ -40,6 +40,7 @@ class AzureConfig:
     storage_container: str = "sentinela-reports"
     service_bus_namespace: str | None = None
     service_bus_queue: str = "clinical-alerts"
+    service_bus_connection_string: str | None = None
     key_vault_name: str | None = None
 
 

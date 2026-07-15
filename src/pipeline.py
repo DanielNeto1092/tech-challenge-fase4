@@ -6,12 +6,13 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from src.cloud.azure_integration import AzureCognitiveAdapter, config_from_env
 from src.config import PipelineConfig
 from src.domain.types import ModalityScore
 from src.engines import CareEngine, FusionEngine, RiskEngine
 from src.extractors import AudioExtractor, MotionExtractor, PoseExtractor, SharpObjectDetector, VisualWellbeingExtractor
 from src.extractors.audio_emotion import predict_audio_emotion
-from src.extractors.clinical import ClinicalExtractor, ClinicalInput
+from src.extractors.clinical import ClinicalExtractor, ClinicalInput, ClinicalTimeSeriesAnomalyDetector
 from src.extractors.text import TextExtractor
 from src.logging_config import PipelineTracer
 
@@ -31,9 +32,11 @@ class SentinelaPipeline:
         )
         self._visual = VisualWellbeingExtractor(model_path=self._cfg.models.visual_wellbeing)
         self._clinical = ClinicalExtractor()
+        self._clinical_temporal = ClinicalTimeSeriesAnomalyDetector()
         self._fusion = FusionEngine(weights=self._cfg.weights, thresholds=self._cfg.thresholds)
         self._risk = RiskEngine()
         self._care = CareEngine()
+        self._azure = AzureCognitiveAdapter(config_from_env(self._cfg.azure))
 
     def analyze(
         self,
@@ -48,8 +51,10 @@ class SentinelaPipeline:
         motion_calibration: str | Path | None = None,
         max_frames: int | None = None,
         clinical_data: ClinicalInput | None = None,
+        clinical_series_data: list[dict[str, Any]] | None = None,
+        prescriptions: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        if not any([transcript, audio_wav, pose_json, frames_dir, video_file, image_for_objects, clinical_data]):
+        if not any([transcript, audio_wav, pose_json, frames_dir, video_file, image_for_objects, clinical_data, clinical_series_data, prescriptions]):
             raise ValueError("Provide at least one input source.")
 
         tracer = PipelineTracer()
@@ -58,13 +63,16 @@ class SentinelaPipeline:
         video_ms: ModalityScore | None = None
         objects_ms: ModalityScore | None = None
         _warnings: list[str] = []
+        transcript_text: str | None = None
+        azure_speech: dict[str, Any] | None = None
 
         # --- TEXT ---
         if transcript:
             try:
                 with tracer.stage("text_extraction"):
                     path = self._resolve(transcript, "transcript")
-                    text_ms = self._text.score(path.read_text(encoding="utf-8", errors="replace"))
+                    transcript_text = path.read_text(encoding="utf-8", errors="replace")
+                    text_ms = self._text.score(transcript_text)
             except ValueError:
                 raise
             except Exception as exc:
@@ -86,12 +94,50 @@ class SentinelaPipeline:
                             confidence_0_1=audio_ms.confidence_0_1,
                             evidence={**audio_ms.evidence, "emotion_baseline": emotion},
                         )
+                if self._azure.enabled:
+                    with tracer.stage("azure_speech_to_text"):
+                        azure_speech = self._azure.speech_to_text(path)
+                        if audio_ms is not None:
+                            audio_ms = ModalityScore(
+                                modality=audio_ms.modality,
+                                score_0_1=audio_ms.score_0_1,
+                                confidence_0_1=audio_ms.confidence_0_1,
+                                evidence={**audio_ms.evidence, "azure_speech_to_text": azure_speech},
+                            )
+                        if azure_speech.get("available") and azure_speech.get("transcript"):
+                            transcript_text = str(azure_speech["transcript"])
+                            if text_ms is None:
+                                text_ms = self._text.score(transcript_text)
             except ValueError:
                 raise
             except Exception as exc:
                 logger.warning("Audio extraction failed: %s", exc)
                 _warnings.append(f"audio: {exc}")
                 audio_ms = None
+
+        # --- AZURE LANGUAGE (sentiment + key phrases) ---
+        if transcript_text and text_ms is not None and self._azure.enabled:
+            try:
+                with tracer.stage("azure_language_analysis"):
+                    language = self._azure.analyze_text(transcript_text)
+                    if language.get("available"):
+                        azure_risk = float(language.get("risk_score", 0.0))
+                        text_ms = ModalityScore(
+                            modality=text_ms.modality,
+                            score_0_1=round(max(text_ms.score_0_1, azure_risk), 3),
+                            confidence_0_1=round(max(text_ms.confidence_0_1, 0.80), 3),
+                            evidence={**text_ms.evidence, "azure_language": language},
+                        )
+                    else:
+                        text_ms = ModalityScore(
+                            modality=text_ms.modality,
+                            score_0_1=text_ms.score_0_1,
+                            confidence_0_1=text_ms.confidence_0_1,
+                            evidence={**text_ms.evidence, "azure_language": language},
+                        )
+            except Exception as exc:
+                logger.warning("Azure Language analysis failed: %s", exc)
+                _warnings.append(f"azure_language: {exc}")
 
         # --- VIDEO (pose) ---
         if pose_json:
@@ -184,6 +230,15 @@ class SentinelaPipeline:
                 logger.warning("Clinical extraction failed: %s", exc)
                 _warnings.append(f"clinical: {exc}")
 
+        if clinical_series_data or prescriptions:
+            try:
+                with tracer.stage("clinical_time_series_anomaly"):
+                    temporal_ms = self._clinical_temporal.score(clinical_series_data, prescriptions)
+                    clinical_ms = self._merge_clinical_scores(clinical_ms, temporal_ms, "time_series")
+            except Exception as exc:
+                logger.warning("Clinical time-series anomaly detection failed: %s", exc)
+                _warnings.append(f"clinical_time_series: {exc}")
+
         # Check at least one modality produced a result
         if not any([text_ms, audio_ms, video_ms, objects_ms, clinical_ms]):
             raise RuntimeError(
@@ -248,6 +303,36 @@ class SentinelaPipeline:
         }
         return ModalityScore(
             modality="video",
+            score_0_1=round(max(0.0, min(1.0, combined)), 3),
+            confidence_0_1=round(max(0.0, min(1.0, confidence)), 3),
+            evidence=evidence,
+        )
+
+    @staticmethod
+    def _merge_clinical_scores(current: ModalityScore | None, incoming: ModalityScore, label: str) -> ModalityScore:
+        if current is None:
+            return incoming
+        sub_scores = dict((current.evidence or {}).get("sub_scores") or {})
+        current_method = str((current.evidence or {}).get("method") or "snapshot_rules")
+        if current_method not in sub_scores:
+            sub_scores[current_method] = {
+                "score": current.score_0_1,
+                "confidence": current.confidence_0_1,
+            }
+        sub_scores[label] = {
+            "score": incoming.score_0_1,
+            "confidence": incoming.confidence_0_1,
+        }
+        combined = max(float(v["score"]) for v in sub_scores.values())
+        confidence = min(1.0, max(float(v["confidence"]) for v in sub_scores.values()))
+        evidence = {
+            **(current.evidence or {}),
+            label: incoming.evidence,
+            "method": "clinical_snapshot_and_temporal_fusion",
+            "sub_scores": sub_scores,
+        }
+        return ModalityScore(
+            modality="clinical",
             score_0_1=round(max(0.0, min(1.0, combined)), 3),
             confidence_0_1=round(max(0.0, min(1.0, confidence)), 3),
             evidence=evidence,

@@ -65,6 +65,15 @@ resource alertQueue 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' 
   }
 }
 
+resource serviceBusSendRule 'Microsoft.ServiceBus/namespaces/AuthorizationRules@2022-10-01-preview' = {
+  name: '${serviceBus.name}/sentinela-alert-sender'
+  properties: {
+    rights: [
+      'Send'
+    ]
+  }
+}
+
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: keyVaultName
   location: location
@@ -124,5 +133,6 @@ output storageAccountName string = storage.name
 output storageContainerName string = reportContainerName
 output serviceBusNamespace string = serviceBus.name
 output serviceBusQueue string = alertQueueName
+output serviceBusSendRuleName string = serviceBusSendRule.name
 output keyVaultName string = keyVault.name
 output applicationInsightsName string = appInsights.name

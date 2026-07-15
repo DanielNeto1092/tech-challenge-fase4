@@ -6,9 +6,10 @@ from pathlib import Path
 
 from src.config import PipelineConfig, FusionWeights
 from src.config import AzureConfig
-from src.cloud.azure_integration import build_azure_receipt
+from src.cloud.azure_integration import AzureCognitiveAdapter, build_azure_receipt
 from src.domain.types import ModalityScore
 from src.engines import FusionEngine, RiskEngine, CareEngine
+from src.extractors.clinical import ClinicalTimeSeriesAnomalyDetector
 from src.extractors.objects import SharpObjectDetector
 from src.extractors.text import TextExtractor
 from src.pipeline import SentinelaPipeline
@@ -246,6 +247,63 @@ class TestPipeline(unittest.TestCase):
         self.assertIn("motion", merged.evidence["sub_scores"])
         self.assertGreater(merged.score_0_1, 0.4)
 
+    def test_pipeline_uses_azure_speech_and_language_when_configured(self):
+        class FakeAzure:
+            enabled = True
+
+            def speech_to_text(self, audio_path):
+                return {
+                    "available": True,
+                    "provider": "azure_speech",
+                    "transcript": "Estou com medo e sem apoio.",
+                }
+
+            def analyze_text(self, text):
+                return {
+                    "available": True,
+                    "provider": "azure_language",
+                    "sentiment": "negative",
+                    "confidence_scores": {"negative": 0.91, "neutral": 0.08, "positive": 0.01},
+                    "key_phrases": ["medo", "sem apoio"],
+                    "critical_terms": ["medo", "sem apoio"],
+                    "risk_score": 0.91,
+                }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            wav = Path(tmp) / "sample.wav"
+            wav.write_bytes(
+                b"RIFF$\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00"
+                b"@\x1f\x00\x00\x80>\x00\x00\x02\x00\x10\x00data\x00\x00\x00\x00"
+            )
+            pipe = SentinelaPipeline()
+            pipe._azure = FakeAzure()
+            report = pipe.analyze(audio_wav=wav)
+
+        self.assertIn("text", report["modality_scores"])
+        text_ev = report["modality_scores"]["text"]["evidence"]
+        self.assertEqual(text_ev["azure_language"]["provider"], "azure_language")
+        self.assertEqual(report["modality_scores"]["audio"]["evidence"]["azure_speech_to_text"]["provider"], "azure_speech")
+
+
+class TestClinicalTimeSeriesAnomaly(unittest.TestCase):
+    def test_detects_vital_sign_time_series_and_prescription_shift(self):
+        detector = ClinicalTimeSeriesAnomalyDetector()
+        score = detector.score(
+            readings=[
+                {"timestamp": "2026-01-01T10:00:00", "systolic_bp": 118, "heart_rate": 82},
+                {"timestamp": "2026-01-01T10:05:00", "systolic_bp": 120, "heart_rate": 84},
+                {"timestamp": "2026-01-01T10:10:00", "systolic_bp": 168, "heart_rate": 128},
+            ],
+            prescriptions=[
+                {"timestamp": "2026-01-01", "medication": "metildopa", "dose": 250, "action": "started"},
+                {"timestamp": "2026-01-02", "medication": "metildopa", "dose": 500, "action": "active"},
+            ],
+        )
+
+        self.assertGreaterEqual(score.score_0_1, 0.65)
+        self.assertTrue(score.evidence["vital_anomalies"])
+        self.assertTrue(score.evidence["prescription_anomalies"])
+
 
 class TestAzureIntegration(unittest.TestCase):
     def test_local_receipt_queues_alert_when_human_review_is_required(self):
@@ -262,7 +320,8 @@ class TestAzureIntegration(unittest.TestCase):
         self.assertEqual(receipt["provider"], "azure")
         self.assertEqual(receipt["mode"], "local_simulation")
         self.assertTrue(receipt["alert"]["required"])
-        self.assertEqual(receipt["alert"]["status"], "queued_for_medical_team")
+        self.assertEqual(receipt["alert"]["status"], "prepared_for_medical_team")
+        self.assertEqual(receipt["alert"]["delivery"]["status"], "not_sent")
         self.assertIn("audio", receipt["managed_services"])
 
     def test_configured_receipt_detects_credentials(self):
@@ -281,6 +340,11 @@ class TestAzureIntegration(unittest.TestCase):
 
         self.assertEqual(receipt["mode"], "configured")
         self.assertFalse(receipt["alert"]["required"])
+
+    def test_azure_adapter_reports_simulation_without_credentials(self):
+        adapter = AzureCognitiveAdapter(AzureConfig())
+        self.assertFalse(adapter.enabled)
+        self.assertEqual(adapter.analyze_text("teste")["mode"], "local_simulation")
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import csv
 import logging
+import statistics
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -265,6 +266,156 @@ class ClinicalExtractor:
         return value >= cls._TEMP_HIGH_F
 
 
+class ClinicalTimeSeriesAnomalyDetector:
+    """Detect anomalies in vital-sign sequences and prescription evolution."""
+
+    _FIELDS = (
+        "systolic_bp",
+        "diastolic_bp",
+        "blood_sugar",
+        "body_temp",
+        "heart_rate",
+        "baseline_fhr",
+    )
+    _HIGH_ALERT_MEDICATIONS = {
+        "insulin",
+        "warfarin",
+        "misoprostol",
+        "oxytocin",
+        "magnesium sulfate",
+        "sulfato de magnesio",
+        "metildopa",
+        "methyldopa",
+        "nifedipine",
+        "nifedipino",
+    }
+
+    def score(
+        self,
+        readings: list[dict[str, Any]] | None = None,
+        prescriptions: list[dict[str, Any]] | None = None,
+    ) -> ModalityScore:
+        readings = readings or []
+        prescriptions = prescriptions or []
+        vital_anomalies = self._vital_anomalies(readings)
+        prescription_anomalies = self._prescription_anomalies(prescriptions)
+
+        max_vital = max((float(a["severity"]) for a in vital_anomalies), default=0.0)
+        max_prescription = max((float(a["severity"]) for a in prescription_anomalies), default=0.0)
+        score = clamp01(max(max_vital, max_prescription))
+        confidence = 0.0
+        if readings:
+            confidence = max(confidence, min(0.9, 0.35 + 0.08 * len(readings)))
+        if prescriptions:
+            confidence = max(confidence, min(0.85, 0.40 + 0.08 * len(prescriptions)))
+
+        return ModalityScore(
+            modality="clinical",
+            score_0_1=round(score, 3),
+            confidence_0_1=round(confidence, 3),
+            evidence={
+                "method": "temporal_vital_signs_and_prescriptions",
+                "available": bool(readings or prescriptions),
+                "readings_count": len(readings),
+                "prescriptions_count": len(prescriptions),
+                "vital_anomalies": vital_anomalies,
+                "prescription_anomalies": prescription_anomalies,
+                "signals": [a["type"] for a in vital_anomalies + prescription_anomalies],
+            },
+        )
+
+    def _vital_anomalies(self, readings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        if len(readings) < 3:
+            return []
+        anomalies: list[dict[str, Any]] = []
+        rows = sorted(readings, key=lambda r: str(r.get("timestamp") or r.get("time") or ""))
+        for idx in range(2, len(rows)):
+            baseline_rows = rows[max(0, idx - 5):idx]
+            current = rows[idx]
+            for field in self._FIELDS:
+                value = _safe_float(current.get(field) or current.get(_camel(field)))
+                baseline = [_safe_float(r.get(field) or r.get(_camel(field))) for r in baseline_rows]
+                baseline = [v for v in baseline if v is not None]
+                if value is None or len(baseline) < 2:
+                    continue
+                mean = statistics.fmean(baseline)
+                stdev = statistics.pstdev(baseline) or 1.0
+                z = (value - mean) / stdev
+                absolute = self._absolute_vital_severity(field, value)
+                z_severity = min(1.0, abs(z) / 4.0) if abs(z) >= 2.0 else 0.0
+                severity = max(absolute, z_severity)
+                if severity >= 0.45:
+                    anomalies.append({
+                        "type": "vital_sign_time_series_anomaly",
+                        "field": field,
+                        "value": value,
+                        "baseline_mean": round(mean, 3),
+                        "z_score": round(z, 3),
+                        "severity": round(severity, 3),
+                        "timestamp": current.get("timestamp") or current.get("time") or idx,
+                    })
+        return anomalies
+
+    def _absolute_vital_severity(self, field: str, value: float) -> float:
+        if field == "systolic_bp" and value >= 140:
+            return min(1.0, 0.65 + (value - 140) / 80)
+        if field == "diastolic_bp" and value >= 90:
+            return min(1.0, 0.55 + (value - 90) / 60)
+        if field == "blood_sugar" and value >= 11.0:
+            return min(1.0, 0.60 + (value - 11.0) / 15)
+        if field == "heart_rate" and (value >= 120 or value <= 50):
+            return 0.55
+        if field == "body_temp" and (value >= 38.0 or value >= 100.4):
+            return 0.50
+        if field == "baseline_fhr" and (value < 110 or value > 160):
+            return 0.60
+        return 0.0
+
+    def _prescription_anomalies(self, prescriptions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        if not prescriptions:
+            return []
+        anomalies: list[dict[str, Any]] = []
+        previous_by_med: dict[str, dict[str, Any]] = {}
+        rows = sorted(prescriptions, key=lambda r: str(r.get("timestamp") or r.get("date") or ""))
+        for idx, row in enumerate(rows):
+            med = str(row.get("medication") or row.get("drug") or row.get("name") or "").strip().lower()
+            action = str(row.get("action") or row.get("status") or "active").strip().lower()
+            dose = _safe_float(row.get("dose") or row.get("dose_mg") or row.get("doseMg"))
+            if not med:
+                continue
+            high_alert = any(item in med for item in self._HIGH_ALERT_MEDICATIONS)
+            prev = previous_by_med.get(med)
+            if high_alert and action in {"new", "started", "inicio", "iniciado"}:
+                anomalies.append({
+                    "type": "prescription_high_alert_started",
+                    "medication": med,
+                    "action": action,
+                    "severity": 0.65,
+                    "timestamp": row.get("timestamp") or row.get("date") or idx,
+                })
+            if prev and dose is not None:
+                prev_dose = _safe_float(prev.get("dose") or prev.get("dose_mg") or prev.get("doseMg"))
+                if prev_dose and abs(dose - prev_dose) / max(prev_dose, 1e-6) >= 0.5:
+                    anomalies.append({
+                        "type": "prescription_dose_shift",
+                        "medication": med,
+                        "previous_dose": prev_dose,
+                        "current_dose": dose,
+                        "severity": 0.55 if not high_alert else 0.75,
+                        "timestamp": row.get("timestamp") or row.get("date") or idx,
+                    })
+            if high_alert and action in {"stopped", "suspended", "suspenso", "interrompido"}:
+                anomalies.append({
+                    "type": "prescription_high_alert_stopped",
+                    "medication": med,
+                    "action": action,
+                    "severity": 0.60,
+                    "timestamp": row.get("timestamp") or row.get("date") or idx,
+                })
+            previous_by_med[med] = row
+        return anomalies
+
+
 def _safe_float(v: Any) -> float | None:
     if v is None:
         return None
@@ -281,3 +432,8 @@ def _safe_int(v: Any) -> int | None:
         return int(float(v))
     except (ValueError, TypeError):
         return None
+
+
+def _camel(snake: str) -> str:
+    head, *tail = snake.split("_")
+    return head + "".join(part.capitalize() for part in tail)

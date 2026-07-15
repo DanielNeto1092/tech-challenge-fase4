@@ -148,7 +148,7 @@ Pesos base: video=0.25, audio=0.20, text=0.20, objects=0.15, clinical=0.20.
 - **Motor de Cuidado**: Avaliacao trauma-informada com 9 dimensoes e 4 trilhas de cuidado.
 - **Risco Obstetrico**: Modalidade clinica com CTG e Maternal Health Risk (WHO thresholds).
 - **Revisao Humana**: Trilha de auditoria para revisao clinica (PENDING/CONFIRMED/DISMISSED/ESCALATED).
-- **Integracao Cloud**: Azure AI Vision, Speech, Language, Health Data Services, Blob Storage e Service Bus
+- **Integracao Cloud**: Azure Speech-to-Text, Azure AI Language, Blob Storage e Service Bus por chamada REST
 - **Interface React**: Dashboard com visualizacao multimodal, explicabilidade, timeline e radar.
 - **Observabilidade**: Logging JSON estruturado com correlation ID e metricas por estagio.
 
@@ -163,7 +163,7 @@ Pesos base: video=0.25, audio=0.20, text=0.20, objects=0.15, clinical=0.20.
 | Audio      | OpenAI Whisper (transcricao), extracao de features acusticas |
 | API        | FastAPI, Uvicorn, Pydantic                                   |
 | Frontend   | React 18, TypeScript, Vite, Tailwind CSS, Recharts           |
-| Cloud      | Azure AI Services, Blob Storage, Service Bus, Key Vault — envelope demonstravel |
+| Cloud      | Azure AI Services, Blob Storage, Service Bus e Key Vault |
 | Dados      | yt-dlp, joblib, PyYAML                                       |
 | Testes     | unittest (56 testes)                                         |
 
@@ -204,10 +204,11 @@ export AZURE_STORAGE_ACCOUNT=<conta>
 export AZURE_STORAGE_CONTAINER=sentinela-reports
 export AZURE_SERVICE_BUS_NAMESPACE=<namespace>
 export AZURE_SERVICE_BUS_QUEUE=clinical-alerts
+export AZURE_SERVICE_BUS_CONNECTION_STRING="<connection-string-da-regra-sentinela-alert-sender>"
 export AZURE_KEY_VAULT_NAME=<key-vault>
 ```
 
-> **Nota:** Sem as variaveis Azure, o pipeline funciona normalmente em modo `local_simulation` e ainda exibe o envelope tecnico de integracao e alerta.
+Com `AZURE_COGNITIVE_ENDPOINT` + `AZURE_COGNITIVE_KEY`, o pipeline chama Azure AI Speech para transcrever audio e Azure AI Language para sentimento e key phrases. Com `AZURE_SERVICE_BUS_CONNECTION_STRING`, alertas URGENTE/revisao humana sao enviados para a fila `clinical-alerts`.
 
 ---
 
@@ -277,7 +278,7 @@ O prototypo Streamlit em `app_demo.py` ainda esta disponivel para testes rapidos
 streamlit run app_demo.py
 ```
 
-> **Nota:** O Streamlit nao e mais a interface principal. Use o frontend React para demonstracao.
+> **Nota:** Use o frontend React para demonstracao.
 
 ### CLI
 
@@ -511,13 +512,13 @@ python -m unittest discover -s tests -v
 
 | Servico Azure | Funcao |
 | --- | --- |
-| Azure AI Services | Vision, Speech e Language para enriquecimento multimodal |
+| Azure AI Services | Speech-to-Text para audio e Language para sentimento/key phrases |
 | Azure Blob Storage | Armazenamento criptografado de relatorios e envelopes |
 | Azure Service Bus | Fila de alertas clinicos para equipe medica |
 | Azure Key Vault | Segredos e chaves de integracao |
 | Log Analytics + Application Insights | Observabilidade do pipeline e da API |
 
-> **Status:** Template Bicep disponivel em `infra/azure/main.bicep`. Sem credenciais, a aplicacao roda em `local_simulation` com recibo tecnico `_azure_integration`.
+> **Status:** Template Bicep disponivel em `infra/azure/main.bicep`. A aplicacao demonstra Speech, Language e Service Bus.
 
 ---
 
@@ -552,7 +553,7 @@ python -m unittest discover -s tests -v
 - **Dados de fala atuada**: Modelos de emocao por audio treinados em RAVDESS, limitando generalizacao para fala espontanea.
 - **Contexto de video educacional**: DAiSEE representa cenarios educacionais, nao clinicos.
 - **Cobertura do lexico portugues**: Analise de texto depende de lista curada; expressoes de baixa frequencia ou regionais podem ser perdidas.
-- **Sem fusao temporal**: Fusao atual e por sessao, nao longitudinal.
+- **Fusao multimodal por sessao**: o pipeline ja inclui anomalia temporal clinica, mas a fusao entre modalidades ainda e calculada por analise/sessao.
 - **Inferencia somente CPU**: Modelos intencionalmente leves; tradeoffs de acuracia documentados.
 - **Pose de pessoa unica**: Heuristica de postura defensiva avalia apenas a pessoa de maior confianca.
 - **Sem validacao clinica real**: O sistema nao foi testado em ambientes clinicos.
@@ -568,7 +569,7 @@ python -m unittest discover -s tests -v
 - [x] Integrar 5a modalidade (clinico/obstetrico).
 - [x] Gerar manifests e evidencias para 6 datasets.
 - [x] Treinar e avaliar YOLOv8n no dataset de objetos cortantes (mAP@50: 87.9%, mAP@50-95: 60.6%).
-- [x] Implementar envelope e template Azure (AI Services, Blob Storage, Service Bus, Key Vault).
+- [x] Implementar adaptadores Azure para Speech, Language e Service Bus.
 
 ### Proximos passos
 
@@ -858,13 +859,13 @@ python -m unittest discover -s tests -v
 
 | Service | Role |
 | --- | --- |
-| Azure AI Services | Vision, Speech and Language enrichment |
+| Azure AI Services | Real Speech-to-Text and Language sentiment/key phrase enrichment |
 | Blob Storage | Encrypted report and evidence envelope storage |
-| Service Bus | Clinical alert queue |
+| Service Bus | Real clinical alert queue when the send connection string is configured |
 | Key Vault | Secrets and integration keys |
 | Log Analytics + Application Insights | Observability |
 
-> **Status:** Bicep template available at `infra/azure/main.bicep`. Without credentials, the application runs in `local_simulation` and still emits the `_azure_integration` technical receipt.
+> **Status:** Bicep template available at `infra/azure/main.bicep`. The application demonstrates Speech, Language and Service Bus integration.
 
 ---
 
@@ -884,7 +885,7 @@ python -m unittest discover -s tests -v
 - **Acted speech data**: Audio emotion models trained on RAVDESS (acted), limiting generalization to spontaneous speech.
 - **Educational video context**: DAiSEE represents educational settings, not clinical environments.
 - **Portuguese lexicon coverage**: Text analysis depends on a curated term list; low-frequency or regional expressions may be missed.
-- **No temporal fusion**: Current fusion is per-session, not longitudinal.
+- **Session-level multimodal fusion**: clinical time-series anomaly detection is implemented, while cross-modality fusion is still computed per analysis session.
 - **CPU-only inference**: Models are intentionally lightweight; accuracy tradeoffs are documented.
 - **No real clinical validation**: The system has not been tested in clinical settings.
 

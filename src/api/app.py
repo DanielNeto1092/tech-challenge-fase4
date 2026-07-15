@@ -37,6 +37,8 @@ class AnalyzeRequest(BaseModel):
     image_for_objects: str | None = None
     max_frames: int | None = None
     clinical_data: dict[str, Any] | None = None
+    clinical_series_data: list[dict[str, Any]] | None = None
+    prescriptions: list[dict[str, Any]] | None = None
     save_as: str | None = None
 
 
@@ -66,6 +68,11 @@ def health() -> dict[str, str]:
 @app.post("/api/analyze")
 def analyze(payload: AnalyzeRequest) -> dict[str, Any]:
     clinical_data = ClinicalExtractor.from_mapping(payload.clinical_data) if payload.clinical_data else None
+    clinical_series_data = payload.clinical_series_data
+    prescriptions = payload.prescriptions
+    if payload.clinical_data:
+        clinical_series_data = clinical_series_data or payload.clinical_data.get("vital_series") or payload.clinical_data.get("clinical_series") or payload.clinical_data.get("readings")
+        prescriptions = prescriptions or payload.clinical_data.get("prescriptions")
     provided_modalities = [
         name
         for name, present in {
@@ -73,7 +80,7 @@ def analyze(payload: AnalyzeRequest) -> dict[str, Any]:
             "audio": bool(payload.audio_wav),
             "video": bool(payload.pose_json or payload.video_file or payload.frames_dir),
             "objects": bool(payload.image_for_objects),
-            "clinical": clinical_data is not None,
+            "clinical": clinical_data is not None or bool(clinical_series_data) or bool(prescriptions),
         }.items()
         if present
     ]
@@ -89,6 +96,8 @@ def analyze(payload: AnalyzeRequest) -> dict[str, Any]:
             image_for_objects=_resolve(payload.image_for_objects),
             max_frames=payload.max_frames,
             clinical_data=clinical_data,
+            clinical_series_data=clinical_series_data,
+            prescriptions=prescriptions,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

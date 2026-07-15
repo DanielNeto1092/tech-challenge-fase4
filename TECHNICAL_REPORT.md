@@ -14,7 +14,7 @@ O Sentinela AI é um sistema de monitoramento multimodal de saúde e segurança 
 | Fusão multimodal                          | Late fusion ponderada por confiança com 5 modalidades, coverage penalty e pesos auditáveis       | `src/engines/fusion_engine.py`                                     |
 | Relatórios automáticos                    | RiskReport JSON com prioridade (ROTINA/MONITORAR/URGENTE), care assessment e guardrails          | `src/engines/risk_engine.py`, `care_engine.py`                     |
 | Detecção de sinais não-verbais            | Heurística de postura defensiva (mãos no rosto, braços dobrados), análise temporal               | `src/extractors/pose.py`                                           |
-| Integração cloud                          | Azure AI Services, Blob Storage, Service Bus e Key Vault com envelope auditável | `src/cloud/azure_integration.py`, `infra/azure/main.bicep` |
+| Integração cloud                          | Azure Speech-to-Text, Azure AI Language e Azure Service Bus | `src/cloud/azure_integration.py`, `infra/azure/main.bicep` |
 | Indicadores de violência doméstica        | Marcadores textuais multi-label (safety_concern, control_or_coercion, isolation, hopelessness)   | `src/extractors/text.py`                                           |
 | Monitoramento psicológico                 | Care assessment com wellbeingIndex, affectiveDistress, audioEmotionDistress                      | `src/engines/care_engine.py`                                       |
 
@@ -22,8 +22,8 @@ O Sentinela AI é um sistema de monitoramento multimodal de saúde e segurança 
 
 1. **Identificar sinais de violência doméstica ou abuso** — via texto (7 categorias de risco), objetos cortantes (YOLOv8), postura defensiva (pose).
 2. **Monitorar bem-estar psicológico feminino** — via care assessment multidimensional com trilha de cuidado.
-3. **Aplicar detecção de anomalias em tempo real** — via prioridade operacional, flags de anomalia (low_confidence, modality_disagreement, sharp_object_detected).
-4. **Utilizar serviços em nuvem** — via arquitetura Azure com AI Services, Blob Storage, Service Bus e Key Vault.
+3. **Aplicar detecção de anomalias em tempo real** — via prioridade operacional, flags de anomalia e detector temporal de sinais vitais/prescrições.
+4. **Utilizar serviços em nuvem** — via chamadas REST para Azure Speech, Azure AI Language e Azure Service Bus.
 
 ---
 
@@ -226,6 +226,19 @@ O Sentinela AI detecta sinais precoces desse fator de risco (hesitação vocal, 
 - **Categorias**: safety_concern, control_or_coercion, isolation, hopelessness, physical_symptom, psychological_distress, support_network_absent.
 - **Recursos**: normalização de acentos, detecção de negação contextual, intensificadores e hedges.
 
+### 5.6 Azure Speech e Azure AI Language
+
+- **Speech-to-Text**: `AzureCognitiveAdapter.speech_to_text` chama Azure AI Speech para transcrever ao menos um áudio demonstrável.
+- **Text Analytics**: `AzureCognitiveAdapter.analyze_text` chama Azure AI Language para análise de sentimento e extração de key phrases.
+- **Integração**: Speech-to-Text e análise textual Azure ficam registradas nas evidências `azure_speech_to_text` e `azure_language`.
+
+### 5.7 Anomalias em Séries Temporais e Prescrições
+
+- **Modelo**: `ClinicalTimeSeriesAnomalyDetector`.
+- **Sinais vitais**: z-score móvel/rolling window sobre pressão arterial, glicemia, temperatura, frequência cardíaca e FHR.
+- **Prescrições**: detecção de início/interrupção de medicações de alto alerta e mudança de dose acima de 50%.
+- **Saída**: score clínico temporal fundido com o score clínico snapshot no pipeline.
+
 ---
 
 ## 6. Pipeline de Fusão Multimodal
@@ -358,9 +371,10 @@ O sistema implementa logging via `src/logging_config.py` com dois componentes:
 | `AZURE_STORAGE_CONTAINER` | Container de relatórios | `sentinela-reports` |
 | `AZURE_SERVICE_BUS_NAMESPACE` | Namespace do Service Bus | `None` |
 | `AZURE_SERVICE_BUS_QUEUE` | Fila de alertas clínicos | `clinical-alerts` |
+| `AZURE_SERVICE_BUS_CONNECTION_STRING` | Connection string SAS com permissão Send para enviar alertas | `None` |
 | `AZURE_KEY_VAULT_NAME` | Key Vault | `None` |
 
-> **Nota:** Sem as variáveis Azure, o pipeline funciona normalmente em modo `local_simulation` e ainda emite o recibo técnico `_azure_integration`.
+> **Nota:** O pipeline chama Azure AI Speech para STT, Azure AI Language para sentimento/key phrases e Azure Service Bus para alerta à equipe médica.
 
 ---
 
@@ -435,7 +449,7 @@ infra/azure/                      # Template Bicep da arquitetura Azure
 | Modalidades podem estar ausentes em runtime                      | Coverage penalty + normalização de pesos sobre modalidades presentes                         |
 | Fusão ingênua supervaloriza uma modalidade                       | Pesos modulados por confiança individual + disagrement flag                                  |
 | YOLOv8 dataset sem split de validação                            | Auto-split programático (20% train → valid) no script de treino                              |
-| Modelos de produção são caros na nuvem                           | Inferência local em CPU + Azure apenas para envelope, persistência e alertas                   |
+| Modelos de produção são caros na nuvem                           | Inferência local em CPU + Azure para STT, análise textual, persistência e alertas              |
 | Risco de falso positivo em contexto sensível                     | human_review_required, guardrails, linguagem não-diagnóstica, uncertainty dimension          |
 | Audio longo fora do domínio de treino                            | Domain warning + redução automática de confiança para áudios >30s                            |
 
@@ -453,7 +467,7 @@ infra/azure/                      # Template Bicep da arquitetura Azure
 
 5. **Design trauma-informado não é opcional**. A forma como o sistema comunica resultados (sem julgamento, com perguntas de segurança) é tão importante quanto a acurácia dos modelos.
 
-6. **Arquitetura cloud enxuta é viável para demonstração acadêmica**. Inferência local + Azure apenas para envelope, persistência e alertas reduz custo sem sacrificar a arquitetura.
+6. **Arquitetura cloud enxuta é viável para demonstração acadêmica**. Inferência local combinada com Azure para STT, análise textual, persistência e alertas reduz custo sem sacrificar a arquitetura.
 
 ---
 

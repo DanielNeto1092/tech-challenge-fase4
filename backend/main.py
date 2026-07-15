@@ -175,6 +175,8 @@ async def analyze(
         try:
             cdata = json.loads(clinical_json)
             kwargs["clinical_data"] = ClinicalExtractor.from_mapping(cdata)
+            kwargs["clinical_series_data"] = cdata.get("vital_series") or cdata.get("clinical_series") or cdata.get("readings")
+            kwargs["prescriptions"] = cdata.get("prescriptions")
             provided_modalities.append("clinical")
         except (json.JSONDecodeError, TypeError, KeyError):
             return JSONResponse(

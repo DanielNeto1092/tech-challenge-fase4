@@ -1,4 +1,4 @@
-file_path,dataset,modality,label_original,label_aurora,split,source_url,notes
+file_path,dataset,modality,label_original,label_sentinela,split,source_url,notes
 maternal+health+risk/Maternal Health Risk Data Set.csv:row_0,Maternal_Health_Risk,clinical,high risk,fetal_risk,train,https://archive.ics.uci.edu/dataset/863/maternal+health+risk,"Age=None, SBP=130, HR=86"
 maternal+health+risk/Maternal Health Risk Data Set.csv:row_1,Maternal_Health_Risk,clinical,high risk,fetal_risk,train,https://archive.ics.uci.edu/dataset/863/maternal+health+risk,"Age=None, SBP=140, HR=70"
 maternal+health+risk/Maternal Health Risk Data Set.csv:row_2,Maternal_Health_Risk,clinical,high risk,fetal_risk,train,https://archive.ics.uci.edu/dataset/863/maternal+health+risk,"Age=None, SBP=90, HR=80"

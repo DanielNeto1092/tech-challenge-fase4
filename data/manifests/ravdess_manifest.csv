@@ -1,4 +1,4 @@
-file_path,dataset,modality,label_original,label_aurora,split,source_url,notes
+file_path,dataset,modality,label_original,label_sentinela,split,source_url,notes
 The Ryerson Audio-Visual Database of Emotional Speech and Song (RAVDESS)\Audio_Song_Actors_01-24\Actor_01\03-02-01-01-01-01-01.wav,RAVDESS,audio,neutral,normal_or_low_risk,train,https://smartlaboratory.org/resources/speech-song-database-ravdess/,"intensity=01, actor=1"
 The Ryerson Audio-Visual Database of Emotional Speech and Song (RAVDESS)\Audio_Song_Actors_01-24\Actor_01\03-02-01-01-01-02-01.wav,RAVDESS,audio,neutral,normal_or_low_risk,train,https://smartlaboratory.org/resources/speech-song-database-ravdess/,"intensity=01, actor=1"
 The Ryerson Audio-Visual Database of Emotional Speech and Song (RAVDESS)\Audio_Song_Actors_01-24\Actor_01\03-02-01-01-02-01-01.wav,RAVDESS,audio,neutral,normal_or_low_risk,train,https://smartlaboratory.org/resources/speech-song-database-ravdess/,"intensity=01, actor=1"

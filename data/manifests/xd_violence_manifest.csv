@@ -1,4 +1,4 @@
-file_path,dataset,modality,label_original,label_aurora,split,source_url,notes
+file_path,dataset,modality,label_original,label_sentinela,split,source_url,notes
 video\xd-violance\abuse\abuse1.mp4,XD-Violence,video,abuse,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
 video\xd-violance\abuse\abuse2.mp4,XD-Violence,video,abuse,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.
 video\xd-violance\car accident\car1.mp4,XD-Violence,video,car_accident,safety_anomaly,example,https://roc-ng.github.io/XD-Violence/,Proxy only — not clinical data. Used for safety anomaly detection validation.

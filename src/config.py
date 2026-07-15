@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -33,16 +32,6 @@ class Thresholds:
 
 
 @dataclass(frozen=True)
-class AwsConfig:
-    region: str = "us-east-1"
-    s3_bucket: str = ""
-    s3_prefix: str = "results"
-    dynamodb_table: str | None = None
-    sns_topic_arn: str | None = None
-    kms_key_id: str | None = None
-
-
-@dataclass(frozen=True)
 class AzureConfig:
     region: str = "brazilsouth"
     cognitive_endpoint: str | None = None
@@ -59,7 +48,6 @@ class PipelineConfig:
     models: ModelPaths = field(default_factory=ModelPaths)
     weights: FusionWeights = field(default_factory=FusionWeights)
     thresholds: Thresholds = field(default_factory=Thresholds)
-    aws: AwsConfig = field(default_factory=AwsConfig)
     azure: AzureConfig = field(default_factory=AzureConfig)
     min_kpt_conf: float = 0.3
     video_confidence: float = 0.8

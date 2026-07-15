@@ -24,7 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.cloud import build_azure_receipt, config_from_env  # noqa: E402
-from src.extractors.clinical import ClinicalInput  # noqa: E402
+from src.extractors.clinical import ClinicalExtractor  # noqa: E402
 from src.pipeline import SentinelaPipeline  # noqa: E402
 
 logger = logging.getLogger("sentinela.api")
@@ -174,14 +174,7 @@ async def analyze(
     if clinical_json and clinical_json.strip():
         try:
             cdata = json.loads(clinical_json)
-            kwargs["clinical_data"] = ClinicalInput(
-                age=cdata.get("age"),
-                systolic_bp=cdata.get("systolic_bp"),
-                diastolic_bp=cdata.get("diastolic_bp"),
-                blood_sugar=cdata.get("blood_sugar"),
-                body_temp=cdata.get("body_temp"),
-                heart_rate=cdata.get("heart_rate"),
-            )
+            kwargs["clinical_data"] = ClinicalExtractor.from_mapping(cdata)
             provided_modalities.append("clinical")
         except (json.JSONDecodeError, TypeError, KeyError):
             return JSONResponse(

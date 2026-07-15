@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Relatório Técnico - Sentinela AI</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; color: #17211f; line-height: 1.45; }
+    h1 { font-size: 24pt; margin-bottom: 6pt; }
+    h2 { font-size: 16pt; margin-top: 20pt; border-top: 1px solid #b8c7c4; padding-top: 10pt; }
+    h3 { font-size: 13pt; margin-top: 14pt; color: #2f4f4a; }
+    p, li { font-size: 10.5pt; }
+    table { border-collapse: collapse; width: 100%; margin: 10pt 0; }
+    th, td { border: 1px solid #9fb0ad; padding: 6pt; font-size: 9.5pt; vertical-align: top; }
+    th { background: #e8f1ef; text-align: left; }
+    .note { background: #eef6f4; border-left: 4px solid #0f766e; padding: 8pt 10pt; }
+    .ok { color: #0f766e; font-weight: bold; }
+    code { font-family: Consolas, monospace; background: #eef6f4; padding: 1pt 3pt; }
+  </style>
+</head>
+<body>
+  <h1>Sentinela AI - Relatório Técnico da Solução Multimodal</h1>
+  <p><strong>Projeto:</strong> Tech Challenge Fase 4 - Secretaria</p>
+  <p><strong>Versão:</strong> aderente à solução Sentinela AI com arquitetura Azure</p>
+  <p><strong>Escopo:</strong> monitoramento preventivo de saúde e segurança da mulher, com detecção multimodal de sinais indiretos de vulnerabilidade, anomalias e risco clínico/obstétrico.</p>
+
+  <h2>1. Resumo Executivo</h2>
+  <p>
+    O Sentinela AI é uma solução de inteligência artificial multimodal para apoiar triagem,
+    acolhimento e revisão humana em cenários de saúde e segurança feminina. O sistema processa
+    texto, áudio, vídeo, objetos em imagem e dados clínicos/obstétricos, combinando os sinais em
+    um score auditável. A saída não realiza diagnóstico automático de violência, depressão ou risco
+    clínico; ela organiza evidências para decisão humana, com linguagem trauma-informada e trilha
+    de cuidado.
+  </p>
+  <p>
+    A arquitetura foi atualizada para Azure, usando envelope técnico para Azure AI Services, Blob
+    Storage, Service Bus, Key Vault, Log Analytics e Application Insights. O projeto também possui
+    template Bicep em <code>infra/azure/main.bicep</code> para provisionamento da infraestrutura.
+  </p>
+
+  <h2>2. Aderência ao PDF do Tech Challenge</h2>
+  <table>
+    <tr>
+      <th>Exigência do desafio</th>
+      <th>Como o Sentinela atende</th>
+      <th>Artefatos no projeto</th>
+      <th>Status</th>
+    </tr>
+    <tr>
+      <td>Propor uma solução de IA aplicada à saúde e segurança da mulher.</td>
+      <td>Sistema de triagem multimodal para sinais de vulnerabilidade, sofrimento psicológico, risco de segurança ambiental e risco obstétrico/fetal.</td>
+      <td><code>README.md</code>, <code>TECHNICAL_REPORT.md</code>, <code>src/pipeline.py</code></td>
+      <td class="ok">Atendido</td>
+    </tr>
+    <tr>
+      <td>Descrever o fluxo multimodal.</td>
+      <td>Pipeline com extratores por modalidade, normalização, late fusion ponderada por confiança, motor de risco e care assessment.</td>
+      <td><code>src/extractors/</code>, <code>src/engines/fusion_engine.py</code>, <code>src/engines/risk_engine.py</code></td>
+      <td class="ok">Atendido</td>
+    </tr>
+    <tr>
+      <td>Informar os modelos aplicados em cada tipo de dado.</td>
+      <td>Modelos e heurísticas listados por áudio, texto, vídeo, objetos e dados clínicos.</td>
+      <td><code>src/extractors/</code>, <code>src/training/</code>, <code>src/config.py</code></td>
+      <td class="ok">Atendido</td>
+    </tr>
+    <tr>
+      <td>Apresentar resultados obtidos.</td>
+      <td>Métricas de baseline, mAP do YOLOv8, exemplos de scores e prioridades operacionais.</td>
+      <td><code>TECHNICAL_REPORT.md</code>, manifests em <code>data/manifests/</code></td>
+      <td class="ok">Atendido</td>
+    </tr>
+    <tr>
+      <td>Exibir exemplos de anomalias detectadas.</td>
+      <td>Inclui anomalias textuais, acústicas, visuais, de objetos e clínico-obstétricas.</td>
+      <td><code>tests/</code>, <code>src/domain/labels.py</code>, <code>src/engines/risk_engine.py</code></td>
+      <td class="ok">Atendido</td>
+    </tr>
+    <tr>
+      <td>Utilizar serviços em nuvem.</td>
+      <td>Arquitetura Azure-first com AI Services, Blob Storage, Service Bus, Key Vault, Application Insights e Log Analytics.</td>
+      <td><code>src/cloud/azure_integration.py</code>, <code>infra/azure/main.bicep</code></td>
+      <td class="ok">Atendido</td>
+    </tr>
+  </table>
+
+  <h2>3. Descrição do Fluxo Multimodal</h2>
+  <p>O fluxo do Sentinela AI segue as etapas abaixo:</p>
+  <ol>
+    <li><strong>Entrada de dados:</strong> a API ou interface recebe texto livre, arquivo de áudio, vídeo/imagem e dados clínicos estruturados.</li>
+    <li><strong>Extração por modalidade:</strong> cada tipo de dado é processado por um extrator independente.</li>
+    <li><strong>Normalização:</strong> cada extrator retorna <code>score</code>, <code>confidence</code>, evidências e avisos de qualidade.</li>
+    <li><strong>Fusão multimodal:</strong> o <code>FusionEngine</code> aplica pesos por modalidade, ajusta por confiança e aplica penalidade por cobertura quando faltam modalidades.</li>
+    <li><strong>Classificação operacional:</strong> o <code>RiskEngine</code> traduz o score para ROTINA, MONITORAR ou URGENTE.</li>
+    <li><strong>Trilha de cuidado:</strong> o <code>CareEngine</code> gera dimensões de cuidado e recomenda encaminhamento humano sem linguagem diagnóstica.</li>
+    <li><strong>Envelope Azure:</strong> a saída inclui recibo técnico para armazenamento, alerta clínico e observabilidade em Azure.</li>
+  </ol>
+
+  <h3>3.1 Fórmula de Fusão</h3>
+  <p>O score multimodal é calculado por late fusion:</p>
+  <p class="note">
+    score_final = soma(score_modalidade x peso_normalizado x confiança) x coverage_penalty
+  </p>
+  <table>
+    <tr><th>Modalidade</th><th>Peso base</th><th>Justificativa</th></tr>
+    <tr><td>Vídeo</td><td>0,25</td><td>Sinais não verbais, postura defensiva e movimento temporal.</td></tr>
+    <tr><td>Áudio</td><td>0,20</td><td>Hesitação, pausas, energia vocal e emoção acústica.</td></tr>
+    <tr><td>Texto</td><td>0,20</td><td>Marcadores explícitos de medo, controle, isolamento e sofrimento.</td></tr>
+    <tr><td>Objetos</td><td>0,15</td><td>Presença de faca, tesoura, objeto cortante ou item de risco ambiental.</td></tr>
+    <tr><td>Clínico</td><td>0,20</td><td>Risco obstétrico/fetal por CTG e sinais vitais maternos.</td></tr>
+  </table>
+
+  <h2>4. Modelos Aplicados por Tipo de Dado</h2>
+  <table>
+    <tr>
+      <th>Tipo de dado</th>
+      <th>Modelo ou técnica</th>
+      <th>Entrada</th>
+      <th>Saída</th>
+      <th>Arquivo principal</th>
+    </tr>
+    <tr>
+      <td>Texto</td>
+      <td>Extrator lexical multi-label em português, com normalização de acentos, negação contextual, intensificadores e hedges.</td>
+      <td>Relato textual, observação clínica ou transcrição.</td>
+      <td>Scores para safety_concern, control_or_coercion, isolation, hopelessness, physical_symptom, psychological_distress e support_network_absent.</td>
+      <td><code>src/extractors/text.py</code></td>
+    </tr>
+    <tr>
+      <td>Áudio</td>
+      <td>Features acústicas + baseline emocional Logistic Regression treinado com RAVDESS.</td>
+      <td>Arquivo WAV/PCM.</td>
+      <td>Energia, pausas, ZCR, clipping, distress vocal e distribuição emocional.</td>
+      <td><code>src/extractors/audio.py</code>, <code>src/extractors/audio_emotion.py</code></td>
+    </tr>
+    <tr>
+      <td>Vídeo - pose</td>
+      <td>YOLOv8n-Pose com keypoints COCO17 e heurística de postura defensiva.</td>
+      <td>Frames de vídeo ou keypoints.</td>
+      <td>hands_near_face, arms_bent, postura defensiva e alerta não verbal.</td>
+      <td><code>src/extractors/pose.py</code></td>
+    </tr>
+    <tr>
+      <td>Vídeo - bem-estar</td>
+      <td>RandomForest MultiOutput treinado com DAiSEE.</td>
+      <td>Features visuais de frames: brilho, contraste, movimento e bordas.</td>
+      <td>Boredom, engagement, confusion e frustration.</td>
+      <td><code>src/extractors/visual_wellbeing.py</code></td>
+    </tr>
+    <tr>
+      <td>Objetos em imagem/vídeo</td>
+      <td>YOLOv8n fine-tuned para objetos cortantes, com fallback COCO.</td>
+      <td>Imagem ou frames.</td>
+      <td>Detecções de Knife, Scissors, Fork, Cutter, Ice Pick, Screwdriver, Peeler e outras classes do dataset customizado.</td>
+      <td><code>src/extractors/objects.py</code>, <code>src/training/train_sharp_objects.py</code></td>
+    </tr>
+    <tr>
+      <td>Clínico/obstétrico</td>
+      <td>Regras clínicas auditáveis para CTG e Maternal Health Risk.</td>
+      <td>NSP, acelerações, desacelerações, sinais vitais, glicemia, temperatura, idade gestacional e contexto perinatal.</td>
+      <td>Risco obstétrico/fetal, severidade, confidence e evidências explicáveis.</td>
+      <td><code>src/extractors/clinical.py</code></td>
+    </tr>
+    <tr>
+      <td>Cloud</td>
+      <td>Envelope Azure para integração técnica e auditoria.</td>
+      <td>Relatório multimodal final.</td>
+      <td>Recibo com provider=azure, modo configured/local_simulation, hash, fila de alerta e serviços gerenciados.</td>
+      <td><code>src/cloud/azure_integration.py</code></td>
+    </tr>
+  </table>
+
+  <h2>5. Resultados Obtidos</h2>
+  <table>
+    <tr><th>Componente</th><th>Resultado</th><th>Interpretação</th></tr>
+    <tr>
+      <td>YOLOv8 Sharp Objects</td>
+      <td>mAP@50: 87,9%; mAP@50-95: 60,6%; Precision: 84,2%; Recall: 81,1%.</td>
+      <td>Resultado adequado para demonstração acadêmica de detecção de objetos cortantes com 15 classes.</td>
+    </tr>
+    <tr>
+      <td>Audio Emotion Baseline</td>
+      <td>Accuracy: 42,7%; Macro-F1: 38,7%.</td>
+      <td>Baseline honesto para áudio atuado; usado como sinal auxiliar, não como decisor isolado.</td>
+    </tr>
+    <tr>
+      <td>DAiSEE Visual Baseline</td>
+      <td>Accuracy média: 59,6%; Macro-F1 médio: 23,1%.</td>
+      <td>Indica desbalanceamento; mantido com transparência e peso controlado na fusão.</td>
+    </tr>
+    <tr>
+      <td>CTG Pathological</td>
+      <td>Score aproximado: 0,748; prioridade URGENTE; revisão prioritária.</td>
+      <td>Risco fetal severo tratado como anomalia clínica crítica.</td>
+    </tr>
+    <tr>
+      <td>Maternal Health High Risk</td>
+      <td>Score aproximado: 0,722; prioridade URGENTE; revisão prioritária.</td>
+      <td>Sinais vitais maternos fora do padrão elevam a prioridade operacional.</td>
+    </tr>
+    <tr>
+      <td>Texto psicológico</td>
+      <td>Score aproximado: 0,441; prioridade MONITORAR.</td>
+      <td>Marcadores de medo, ansiedade, insônia ou isolamento geram acompanhamento humano.</td>
+    </tr>
+    <tr>
+      <td>Objeto cortante detectado</td>
+      <td>Exemplo: Fork com confidence 0,891; human review requerido.</td>
+      <td>Sinal ambiental concreto; escala o caso para no mínimo MONITORAR.</td>
+    </tr>
+  </table>
+
+  <h2>6. Exemplos de Anomalias Detectadas</h2>
+  <table>
+    <tr>
+      <th>Anomalia</th>
+      <th>Modalidade</th>
+      <th>Indicadores observados</th>
+      <th>Ação do sistema</th>
+    </tr>
+    <tr>
+      <td>Relato com medo e controle coercitivo</td>
+      <td>Texto</td>
+      <td>Termos de medo, isolamento, controle, desesperança e ausência de rede de apoio.</td>
+      <td>Eleva safetySignal, recomenda acolhimento e revisão humana.</td>
+    </tr>
+    <tr>
+      <td>Áudio com distress vocal</td>
+      <td>Áudio</td>
+      <td>Pausas, baixa energia, alta variabilidade ou emoção fearful/sad/angry.</td>
+      <td>Aumenta affectiveDistress e reduz confidence quando fora do domínio.</td>
+    </tr>
+    <tr>
+      <td>Postura defensiva</td>
+      <td>Vídeo/Pose</td>
+      <td>Mãos próximas ao rosto, braços dobrados e padrão temporal consistente.</td>
+      <td>Gera nonverbalAlert e contribui para o score multimodal.</td>
+    </tr>
+    <tr>
+      <td>Objeto cortante no ambiente</td>
+      <td>Imagem/Vídeo</td>
+      <td>Knife, Scissors, Fork, Cutter, Ice Pick, Screwdriver ou classe equivalente.</td>
+      <td>Escala para no mínimo MONITORAR e marca <code>sharp_object_detected</code>.</td>
+    </tr>
+    <tr>
+      <td>CTG patológico</td>
+      <td>Clínico</td>
+      <td>NSP=3, desacelerações severas ou padrão fetal patológico.</td>
+      <td>Prioridade URGENTE e revisão clínica prioritária.</td>
+    </tr>
+    <tr>
+      <td>Risco materno alto</td>
+      <td>Clínico</td>
+      <td>Pressão sistólica elevada, glicemia alta, temperatura alterada ou combinações de risco.</td>
+      <td>Prioridade URGENTE e encaminhamento para avaliação profissional.</td>
+    </tr>
+    <tr>
+      <td>Discordância entre modalidades</td>
+      <td>Fusão</td>
+      <td>Uma modalidade muito alta e outras baixas, ou baixa confiança geral.</td>
+      <td>Flag de incerteza, redução por coverage penalty e revisão humana quando necessário.</td>
+    </tr>
+  </table>
+
+  <h2>7. Arquitetura Azure</h2>
+  <table>
+    <tr><th>Serviço Azure</th><th>Função na solução</th></tr>
+    <tr><td>Azure AI Services</td><td>Camada prevista para enriquecimento de Vision, Speech e Language.</td></tr>
+    <tr><td>Azure Blob Storage</td><td>Armazenamento criptografado de relatórios, envelopes e evidências minimizadas.</td></tr>
+    <tr><td>Azure Service Bus</td><td>Fila de alertas clínicos para equipe responsável.</td></tr>
+    <tr><td>Azure Key Vault</td><td>Guarda de segredos, chaves e parâmetros sensíveis.</td></tr>
+    <tr><td>Log Analytics</td><td>Centralização de logs técnicos e métricas operacionais.</td></tr>
+    <tr><td>Application Insights</td><td>Observabilidade da API e rastreio de falhas/latência.</td></tr>
+  </table>
+  <p>
+    O projeto roda sem credenciais em <code>local_simulation</code>, mantendo o recibo técnico
+    <code>_azure_integration</code>. Quando as variáveis de ambiente Azure forem configuradas,
+    o mesmo contrato permite evoluir para adaptadores reais de persistência e mensageria.
+  </p>
+
+  <h2>8. Privacidade, Ética e LGPD</h2>
+  <ul>
+    <li><strong>Minimização:</strong> o sistema prioriza scores, evidências e metadados, evitando persistir mídia bruta.</li>
+    <li><strong>Pseudonimização:</strong> casos usam identificadores técnicos sem vínculo direto com identidade real.</li>
+    <li><strong>Criptografia:</strong> Azure Storage com criptografia em repouso e TLS 1.2+ em trânsito.</li>
+    <li><strong>Revisão humana:</strong> casos sensíveis são encaminhados para avaliação profissional.</li>
+    <li><strong>Linguagem não diagnóstica:</strong> a solução fala em sinais, indicadores e prioridades, nunca em conclusões automáticas.</li>
+  </ul>
+
+  <h2>9. Limitações e Controles</h2>
+  <ul>
+    <li>RAVDESS é uma base de fala atuada; sua generalização para fala espontânea é limitada.</li>
+    <li>DAiSEE é base educacional, não clínica; por isso o peso visual é moderado.</li>
+    <li>XD-Violence é usado apenas como proxy de anomalia visual, não como evidência clínica de violência doméstica.</li>
+    <li>O extrator textual atual é lexical; a evolução recomendada é BERTimbau ou modelo contextual em português.</li>
+    <li>O sistema não substitui avaliação médica, psicológica, jurídica ou assistencial.</li>
+  </ul>
+
+  <h2>10. Conclusão</h2>
+  <p>
+    O Sentinela AI está aderente ao Tech Challenge Fase 4 porque entrega uma solução de IA
+    multimodal, descreve claramente o fluxo de processamento, documenta modelos por tipo de dado,
+    apresenta resultados obtidos, exemplifica anomalias detectadas e inclui arquitetura cloud em
+    Azure. A solução é tecnicamente auditável, eticamente cautelosa e compatibilizada com o objetivo
+    de apoiar a segurança e a saúde da mulher sem automatizar diagnósticos ou decisões sensíveis.
+  </p>
+</body>
+</html>

@@ -21,6 +21,15 @@ class TestTextExtractor(unittest.TestCase):
         self.assertGreater(result["overall_text_signal"], 0.0)
         self.assertGreater(result["labels"]["safety_concern"]["score"], 0.0)
 
+    def test_detects_womens_health_specific_text_signals(self):
+        ext = TextExtractor()
+        result = ext.analyze(
+            "No pos-parto sinto choro constante, medo do parto e sangramento anormal."
+        )
+        self.assertGreater(result["labels"]["postpartum_depression"]["score"], 0.0)
+        self.assertGreater(result["labels"]["gestational_anxiety"]["score"], 0.0)
+        self.assertGreater(result["labels"]["gynecological_risk"]["score"], 0.0)
+
     def test_empty_text_returns_zero(self):
         ext = TextExtractor()
         result = ext.score("")
@@ -225,6 +234,17 @@ class TestPipeline(unittest.TestCase):
         pipe = SentinelaPipeline()
         with self.assertRaises(ValueError):
             pipe.analyze()
+
+    def test_video_subscores_are_combined(self):
+        merged = SentinelaPipeline._merge_video_scores(
+            ModalityScore(modality="video", score_0_1=0.4, confidence_0_1=0.8, evidence={"mode": "pose"}),
+            ModalityScore(modality="video", score_0_1=0.8, confidence_0_1=0.6, evidence={"mode": "motion"}),
+            "motion",
+        )
+        self.assertEqual(merged.evidence["mode"], "specialized_video_fusion")
+        self.assertIn("pose", merged.evidence["sub_scores"])
+        self.assertIn("motion", merged.evidence["sub_scores"])
+        self.assertGreater(merged.score_0_1, 0.4)
 
 
 class TestAzureIntegration(unittest.TestCase):

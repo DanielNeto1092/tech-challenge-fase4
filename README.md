@@ -364,19 +364,19 @@ Endpoints (`backend/main.py` — usado pelo frontend React):
 
 ## Evidencias de Funcionamento
 
-Resultados reais gerados pelo pipeline em `data/results/`:
+Exemplos reprodutiveis pelo pipeline. Para gerar os JSON localmente, execute `python scripts/generate_evidence_v2.py`; os arquivos serao gravados em `data/results/`.
 
-| Arquivo                                  | Descricao                                      | Score     | Priority  | Care Pathway                |
+| Cenario                                  | Descricao                                      | Score     | Priority  | Care Pathway                |
 | ---------------------------------------- | ---------------------------------------------- | --------- | --------- | --------------------------- |
-| `evidence_maternal_high_risk.json`       | Maternal Health: high risk (SBP=140, BS=13)    | 0.722     | URGENTE   | revisao_prioritaria         |
-| `evidence_maternal_low_risk.json`        | Maternal Health: low risk                      | 0.106     | ROTINA    | acompanhamento_rotina       |
-| `evidence_ctg_pathological.json`         | CTG pathological (NSP=3, severe decelerations) | 0.748     | URGENTE   | revisao_prioritaria         |
-| `evidence_ctg_normal.json`               | CTG normal (NSP=1)                             | 0.088     | ROTINA    | acompanhamento_rotina       |
-| `evidence_text_psychological.json`       | Texto: medo, ansiedade, insonia, isolamento    | 0.441     | MONITORAR | acompanhamento_rotina       |
-| `evidence_multimodal_text_clinical.json` | Multimodal: texto distress + clinical mid risk | 0.397     | ROTINA    | acolhimento_e_monitoramento |
-| `evidence_eatd_audio.json`               | EATD-Corpus audio (SDS=82.5, depression)       | ✅ gerado | —         | —                           |
-| `evidence_ravdess_fearful.json`          | RAVDESS audio (fearful emotion)                | ✅ gerado | —         | —                           |
-| `evidence_object_fork.json`              | Fork detectado via COCO YOLOv8 (conf 0.891)    | ✅ gerado | MONITORAR | —                           |
+| Maternal high risk                       | Maternal Health: high risk (SBP=140, BS=13)    | 0.722     | URGENTE   | revisao_prioritaria         |
+| Maternal low risk                        | Maternal Health: low risk                      | 0.106     | ROTINA    | acompanhamento_rotina       |
+| CTG pathological                         | CTG pathological (NSP=3, severe decelerations) | 0.748     | URGENTE   | revisao_prioritaria         |
+| CTG normal                               | CTG normal (NSP=1)                             | 0.088     | ROTINA    | acompanhamento_rotina       |
+| Texto psicologico                        | Texto: medo, ansiedade, insonia, isolamento    | 0.441     | MONITORAR | acompanhamento_rotina       |
+| Texto + clinical mid risk                | Multimodal: texto distress + clinical mid risk | 0.397     | ROTINA    | acolhimento_e_monitoramento |
+| EATD-Corpus audio                        | EATD-Corpus audio (SDS=82.5, depression)       | gerado    | —         | —                           |
+| RAVDESS fearful audio                    | RAVDESS audio (fearful emotion)                | gerado    | —         | —                           |
+| Objeto fork                              | Fork detectado via COCO YOLOv8 (conf 0.891)    | gerado    | MONITORAR | —                           |
 
 Para regenerar: `python scripts/generate_evidence_v2.py`
 
@@ -422,7 +422,7 @@ src/
     app.py                      # Aplicacao FastAPI
     static/                     # Dashboard web (HTML/JS/CSS)
   cloud/
-    aws_publish.py              # Integracao S3 + DynamoDB + SNS
+    azure_integration.py        # Envelope Azure AI Services + Blob + Service Bus
   training/
     train_audio_emotion.py      # Treino do baseline de emocao por audio
     train_sharp_objects.py      # Fine-tuning YOLOv8 com auto-split
@@ -440,10 +440,8 @@ scripts/
   train_daisee_visual_baseline.py # Treina baseline visual DAiSEE
   render_case_summary.py        # Renderiza sumario de caso
   render_html_report.py         # Renderiza relatorio HTML
-models/                         # Artefatos de modelos treinados (.joblib, .pt)
 data/                           # Manifestos, caches, resultados
-docs/                           # Documentacao de arquitetura, design e datasets
-archive/                        # Codigo legado e artefatos supersedidos
+infra/azure/                    # Infraestrutura Azure em Bicep
 ```
 
 ---
@@ -509,17 +507,17 @@ python -m unittest discover -s tests -v
 
 ---
 
-## Arquitetura Cloud (AWS) 
+## Arquitetura Cloud (Azure)
 
-| Servico      | Funcao                                | Limite Free Tier   |
-| ------------ | ------------------------------------- | ------------------ |
-| EC2 t2.micro | Inferencia (CPU)                      | 750 hrs/mes        |
-| S3           | Armazenamento criptografado (SSE-S3)  | 5 GB               |
-| Lambda       | Indexacao + despacho de alertas       | 1M requisicoes/mes |
-| DynamoDB     | Indice de relatorios de pacientes     | 25 GB              |
-| SNS          | Alertas por email para equipe clinica | 1.000 emails/mes   |
+| Servico Azure | Funcao |
+| --- | --- |
+| Azure AI Services | Vision, Speech e Language para enriquecimento multimodal |
+| Azure Blob Storage | Armazenamento criptografado de relatorios e envelopes |
+| Azure Service Bus | Fila de alertas clinicos para equipe medica |
+| Azure Key Vault | Segredos e chaves de integracao |
+| Log Analytics + Application Insights | Observabilidade do pipeline e da API |
 
-> **Status:** Arquitetura documentada em `docs/aws_architecture.md`. 
+> **Status:** Template Bicep disponivel em `infra/azure/main.bicep`. Sem credenciais, a aplicacao roda em `local_simulation` com recibo tecnico `_azure_integration`.
 
 ---
 
@@ -528,9 +526,9 @@ python -m unittest discover -s tests -v
 ### Privacidade (Conformidade LGPD)
 
 - **Pseudonimizacao**: `patient_id` e um hash sem vinculo com identidade real.
-- **Criptografia**: SSE-S3 em repouso, TLS 1.2+ em transito.
+- **Criptografia**: Azure Storage com TLS 1.2+ em transito e criptografia em repouso.
 - **Minimizacao de dados**: Apenas scores e evidencias sao persistidos; midia bruta nao e armazenada na nuvem.
-- **Retencao**: TTL configuravel via S3 Lifecycle e DynamoDB TTL.
+- **Retencao**: Politicas de ciclo de vida no Blob Storage e controle de expiracao por metadados.
 - **Direito ao apagamento**: Suporte a exclusao por `patient_id`.
 
 ### Design Trauma-Informado
@@ -570,7 +568,7 @@ python -m unittest discover -s tests -v
 - [x] Integrar 5a modalidade (clinico/obstetrico).
 - [x] Gerar manifests e evidencias para 6 datasets.
 - [x] Treinar e avaliar YOLOv8n no dataset de objetos cortantes (mAP@50: 87.9%, mAP@50-95: 60.6%).
-- [x] Implementar deploy AWS (S3 + DynamoDB + SNS).
+- [x] Implementar envelope e template Azure (AI Services, Blob Storage, Service Bus, Key Vault).
 
 ### Proximos passos
 
@@ -629,7 +627,7 @@ Clinical teams need tools that can synthesize heterogeneous signals into actiona
 - **Graceful degradation** — works with any subset of modalities, adjusting confidence accordingly.
 - **Academically honest** — all model limitations, biases, and baseline constraints are documented.
 - **React + FastAPI interface** — modern dashboard with multimodal visualization and explainability.
-- **AWS Free Tier architecture** — production-grade cloud integration planned for final phase.
+- **Azure-first architecture** — production-grade cloud integration aligned with the proposed Sentinela solution.
 - **Structured logging** — JSON pipeline tracing with correlation ID and stage-level timing.
 
 ---
@@ -708,7 +706,7 @@ Where weights are modulated by per-modality confidence, and a coverage penalty r
 - **Care Engine**: Trauma-informed assessment with 9 dimensions and 4 care pathways.
 - **Clinical Risk**: Obstetric modality with CTG and Maternal Health Risk (WHO thresholds).
 - **Human Review**: Audit trail for clinical review (PENDING/CONFIRMED/DISMISSED/ESCALATED).
-- **Cloud Integration**: AWS Free Tier (S3 + DynamoDB + Lambda + SNS) 
+- **Cloud Integration**: Azure AI Services, Blob Storage, Service Bus, and Key Vault.
 - **React Dashboard**: Interactive frontend with multimodal visualization and explainability.
 - **Observability**: Structured JSON logging with correlation ID and per-stage metrics.
 
@@ -723,7 +721,7 @@ Where weights are modulated by per-modality confidence, and a coverage penalty r
 | Audio       | OpenAI Whisper (transcription), custom acoustic feature extraction |
 | API         | FastAPI, Uvicorn, Pydantic                                         |
 | Frontend    | React 18, TypeScript, Vite, Tailwind CSS, Recharts                 |
-| Cloud       | AWS (S3, DynamoDB, Lambda, SNS), Boto3 — planned                   |
+| Cloud       | Azure AI Services, Blob Storage, Service Bus, Key Vault |
 | Data        | yt-dlp, joblib, PyYAML                                             |
 | Testing     | unittest (56 tests)                                                |
 
@@ -856,26 +854,24 @@ python -m unittest discover -s tests -v
 
 ---
 
-## AWS / Cloud Architecture — 
+## Azure Cloud Architecture
 
-Full Free Tier architecture ($0.00/month)
+| Service | Role |
+| --- | --- |
+| Azure AI Services | Vision, Speech and Language enrichment |
+| Blob Storage | Encrypted report and evidence envelope storage |
+| Service Bus | Clinical alert queue |
+| Key Vault | Secrets and integration keys |
+| Log Analytics + Application Insights | Observability |
 
-| Service      | Role                              | Free Tier Limit    |
-| ------------ | --------------------------------- | ------------------ |
-| EC2 t2.micro | Inference (CPU)                   | 750 hrs/month      |
-| S3           | Encrypted report storage (SSE-S3) | 5 GB               |
-| Lambda       | Index + alert dispatch            | 1M requests/month  |
-| DynamoDB     | Patient report index              | 25 GB              |
-| SNS          | Clinical team email alerts        | 1,000 emails/month |
-
-> **Status:** Architecture documented in `docs/aws_architecture.md`. Implementation pending.
+> **Status:** Bicep template available at `infra/azure/main.bicep`. Without credentials, the application runs in `local_simulation` and still emits the `_azure_integration` technical receipt.
 
 ---
 
 ## Privacy, Ethics, and Trauma-Informed Design
 
 - **Pseudonymization**: `patient_id` is a hash with no link to real identity.
-- **Encryption**: SSE-S3 at rest, TLS 1.2+ in transit.
+- **Encryption**: Azure Storage encryption at rest and TLS 1.2+ in transit.
 - **Data minimization**: Only scores and evidence are persisted; raw media is not stored in the cloud.
 - The system **never diagnoses** domestic violence automatically.
 - All outputs are framed as signals for human review, not conclusions.

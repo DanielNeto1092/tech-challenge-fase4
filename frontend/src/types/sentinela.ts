@@ -49,7 +49,11 @@ export interface ClinicalData {
   diastolic_bp?: number;
   blood_sugar?: number;
   body_temp?: number;
+  body_temp_unit?: "C" | "F";
   heart_rate?: number;
+  baseline_fhr?: number;
+  nsp_class?: number;
+  risk_label?: "low risk" | "mid risk" | "high risk";
 }
 
 export interface SentinelaReport {

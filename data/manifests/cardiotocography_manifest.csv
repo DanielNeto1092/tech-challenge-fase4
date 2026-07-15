@@ -1,4 +1,4 @@
-file_path,dataset,modality,label_original,label_aurora,split,source_url,notes
+file_path,dataset,modality,label_original,label_sentinela,split,source_url,notes
 cardiotocography/CTG.xls:row_0,Cardiotocography,clinical,NSP=2,obstetric_risk,train,https://archive.ics.uci.edu/dataset/193/cardiotocography,"LB=120.0, AC=0.0"
 cardiotocography/CTG.xls:row_1,Cardiotocography,clinical,NSP=1,normal_or_low_risk,train,https://archive.ics.uci.edu/dataset/193/cardiotocography,"LB=132.0, AC=4.0"
 cardiotocography/CTG.xls:row_2,Cardiotocography,clinical,NSP=1,normal_or_low_risk,train,https://archive.ics.uci.edu/dataset/193/cardiotocography,"LB=133.0, AC=2.0"

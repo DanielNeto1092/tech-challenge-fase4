@@ -97,10 +97,13 @@ export function buildSignals(report: SentinelaReport): Signal[] {
     const labels = (ev.labels || {}) as Record<string, Record<string, unknown>>;
     const labelPt: Record<string, string> = {
       safety_concern: "segurança",
-      coercion: "coerção",
+      control_or_coercion: "coerção/controle",
       isolation: "isolamento",
       hopelessness: "desesperança",
       psychological_distress: "distress psicológico",
+      postpartum_depression: "pós-parto",
+      gestational_anxiety: "ansiedade gestacional",
+      gynecological_risk: "risco ginecológico",
     };
     Object.entries(labels)
       .filter(([, v]) => typeof v === "object" && (v?.score as number) > 0)

@@ -37,6 +37,9 @@ class ClinicalInput:
     nsp_class: int | None = None  # 1=Normal, 2=Suspect, 3=Pathological
     # Direct risk label (if known)
     risk_label: str | None = None  # "low risk", "mid risk", "high risk"
+    # Temperature unit. When omitted, values <= 60 are treated as Celsius and
+    # higher values as Fahrenheit to support both UI and public dataset inputs.
+    body_temp_unit: str | None = None  # "C" or "F"
     # Source
     source: str = "unknown"
 
@@ -57,7 +60,8 @@ class ClinicalExtractor:
     _BP_ELEVATED = 130
     _BS_HIGH = 11.0  # mmol/L fasting
     _BS_ELEVATED = 7.8
-    _TEMP_HIGH = 100.4  # Fahrenheit
+    _TEMP_HIGH_F = 100.4
+    _TEMP_HIGH_C = 38.0
     _HR_HIGH = 100
     _HR_LOW = 60
 
@@ -141,8 +145,11 @@ class ClinicalExtractor:
                 signals.append("elevated_blood_sugar")
                 risk_factors += 1
 
+        body_temp_fever = self._is_fever(clinical.body_temp, clinical.body_temp_unit)
         if clinical.body_temp is not None:
-            if clinical.body_temp >= self._TEMP_HIGH:
+            evidence["body_temp"] = clinical.body_temp
+            evidence["body_temp_unit"] = self._temperature_unit(clinical.body_temp, clinical.body_temp_unit)
+            if body_temp_fever:
                 score += 0.20
                 signals.append("fever")
                 risk_factors += 1
@@ -195,6 +202,7 @@ class ClinicalExtractor:
             body_temp=_safe_float(row.get("BodyTemp")),
             heart_rate=_safe_float(row.get("HeartRate")),
             risk_label=row.get("RiskLevel", "").strip() or None,
+            body_temp_unit="F",
             source="Maternal_Health_Risk",
         )
 
@@ -211,6 +219,50 @@ class ClinicalExtractor:
             nsp_class=_safe_int(row.get("NSP")),
             source="Cardiotocography",
         )
+
+    @classmethod
+    def from_mapping(cls, data: dict[str, Any], source: str = "api_payload") -> ClinicalInput:
+        """Create ClinicalInput from API/UI JSON with permissive field aliases."""
+        risk_label = data.get("risk_label") or data.get("riskLabel") or data.get("maternal_risk_label")
+        nsp_class = data.get("nsp_class", data.get("nspClass", data.get("NSP")))
+        return ClinicalInput(
+            age=_safe_float(data.get("age") or data.get("Age")),
+            systolic_bp=_safe_float(data.get("systolic_bp") or data.get("systolicBP") or data.get("SystolicBP")),
+            diastolic_bp=_safe_float(data.get("diastolic_bp") or data.get("diastolicBP") or data.get("DiastolicBP")),
+            blood_sugar=_safe_float(data.get("blood_sugar") or data.get("bloodSugar") or data.get("BS")),
+            body_temp=_safe_float(data.get("body_temp") or data.get("bodyTemp") or data.get("BodyTemp")),
+            body_temp_unit=(data.get("body_temp_unit") or data.get("bodyTempUnit") or data.get("temp_unit") or None),
+            heart_rate=_safe_float(data.get("heart_rate") or data.get("heartRate") or data.get("HeartRate")),
+            baseline_fhr=_safe_float(data.get("baseline_fhr") or data.get("baselineFhr") or data.get("LB")),
+            accelerations=_safe_float(data.get("accelerations") or data.get("AC")),
+            fetal_movement=_safe_float(data.get("fetal_movement") or data.get("fetalMovement") or data.get("FM")),
+            uterine_contractions=_safe_float(data.get("uterine_contractions") or data.get("uterineContractions") or data.get("UC")),
+            decelerations_light=_safe_float(data.get("decelerations_light") or data.get("decelerationsLight") or data.get("DL")),
+            decelerations_severe=_safe_float(data.get("decelerations_severe") or data.get("decelerationsSevere") or data.get("DS")),
+            nsp_class=_safe_int(nsp_class),
+            risk_label=str(risk_label).strip() if risk_label else None,
+            source=str(data.get("source") or source),
+        )
+
+    @classmethod
+    def _temperature_unit(cls, value: float | None, unit: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = (unit or "").strip().upper()
+        if normalized in {"C", "CELSIUS", "°C"}:
+            return "C"
+        if normalized in {"F", "FAHRENHEIT", "°F"}:
+            return "F"
+        return "C" if value <= 60 else "F"
+
+    @classmethod
+    def _is_fever(cls, value: float | None, unit: str | None) -> bool:
+        if value is None:
+            return False
+        resolved = cls._temperature_unit(value, unit)
+        if resolved == "C":
+            return value >= cls._TEMP_HIGH_C
+        return value >= cls._TEMP_HIGH_F
 
 
 def _safe_float(v: Any) -> float | None:

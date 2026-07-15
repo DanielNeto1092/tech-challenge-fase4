@@ -214,6 +214,16 @@ export default function Sidebar({
                     label: "Freq. Cardíaca (bpm)",
                     placeholder: "ex: 76",
                   },
+                  {
+                    key: "baseline_fhr",
+                    label: "FC fetal basal (bpm)",
+                    placeholder: "ex: 140",
+                  },
+                  {
+                    key: "nsp_class",
+                    label: "CTG NSP (1, 2 ou 3)",
+                    placeholder: "ex: 2",
+                  },
                 ] as const
               ).map((field) => (
                 <div key={field.key}>
@@ -229,13 +239,42 @@ export default function Sidebar({
                       const val = e.target.value
                         ? Number(e.target.value)
                         : undefined;
-                      setClinical({ ...clinical, [field.key]: val });
+                      setClinical({
+                        ...clinical,
+                        [field.key]: val,
+                        ...(field.key === "body_temp" && val !== undefined
+                          ? { body_temp_unit: "C" as const }
+                          : {}),
+                      });
                     }}
                     className="w-full px-2 py-1.5 text-[0.82rem] bg-sentinela-surface border border-sentinela-border rounded-lg
                                placeholder:text-sentinela-text-3 focus:outline-none focus:border-sentinela-primary/40 transition-all"
                   />
                 </div>
               ))}
+              <div>
+                <label className="text-[0.72rem] text-sentinela-text-2">
+                  Classificação Maternal Health Risk
+                </label>
+                <select
+                  value={clinical.risk_label ?? ""}
+                  onChange={(e) =>
+                    setClinical({
+                      ...clinical,
+                      risk_label: e.target.value
+                        ? (e.target.value as ClinicalData["risk_label"])
+                        : undefined,
+                    })
+                  }
+                  className="w-full px-2 py-1.5 text-[0.82rem] bg-sentinela-surface border border-sentinela-border rounded-lg
+                             focus:outline-none focus:border-sentinela-primary/40 transition-all"
+                >
+                  <option value="">Não informado</option>
+                  <option value="low risk">Baixo risco</option>
+                  <option value="mid risk">Risco intermediário</option>
+                  <option value="high risk">Alto risco</option>
+                </select>
+              </div>
               {hasClinical && (
                 <button
                   onClick={() => setClinical({})}

@@ -1,4 +1,4 @@
-file_path,dataset,modality,label_original,label_aurora,split,source_url,notes
+file_path,dataset,modality,label_original,label_sentinela,split,source_url,notes
 EATD-Corpus - Automatic Depression Detection\EATD-Corpus\t_1\positive.wav,EATD-Corpus,audio,SDS=46_positive,anxiety_or_fear,train,https://github.com/speechandlanguageprocessing/ICASSP2022-Depression,"sentiment=positive, SDS=46.2"
 EATD-Corpus - Automatic Depression Detection\EATD-Corpus\t_1\positive.txt,EATD-Corpus,text,SDS=46_positive,anxiety_or_fear,train,https://github.com/speechandlanguageprocessing/ICASSP2022-Depression,"sentiment=positive, SDS=46.2, lang=Chinese"
 EATD-Corpus - Automatic Depression Detection\EATD-Corpus\t_1\neutral.wav,EATD-Corpus,audio,SDS=46_neutral,anxiety_or_fear,train,https://github.com/speechandlanguageprocessing/ICASSP2022-Depression,"sentiment=neutral, SDS=46.2"

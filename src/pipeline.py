@@ -121,7 +121,8 @@ class SentinelaPipeline:
                             scale=float(calib.get("motion_scale", 6.0)),
                             risk_direction=str(calib.get("direction", "high_motion_risk")),
                         )
-                    video_ms = motion.score(fdir, sequence, max_frames=max_frames, confidence=self._cfg.video_confidence)
+                    motion_ms = motion.score(fdir, sequence, max_frames=max_frames, confidence=self._cfg.video_confidence)
+                    video_ms = self._merge_video_scores(video_ms, motion_ms, "motion")
             except ValueError:
                 raise
             except Exception as exc:
@@ -135,10 +136,16 @@ class SentinelaPipeline:
                     path = self._resolve(video_file, "video_file")
                     wb = self._visual.predict(path)
                     strain = float(wb.get("visualStrain", 0.0))
+                    wb_ms = ModalityScore(
+                        modality="video",
+                        score_0_1=strain,
+                        confidence_0_1=0.55 if wb.get("available") else 0.0,
+                        evidence={"mode": "visual_wellbeing", **wb},
+                    )
                     if video_ms is None:
-                        video_ms = ModalityScore(modality="video", score_0_1=strain, confidence_0_1=0.55 if wb.get("available") else 0.0, evidence={"mode": "visual_wellbeing", **wb})
+                        video_ms = wb_ms
                     else:
-                        video_ms = ModalityScore(modality=video_ms.modality, score_0_1=video_ms.score_0_1, confidence_0_1=video_ms.confidence_0_1, evidence={**video_ms.evidence, "visual_wellbeing": wb})
+                        video_ms = self._merge_video_scores(video_ms, wb_ms, "visual_wellbeing")
             except ValueError:
                 raise
             except Exception as exc:
@@ -210,6 +217,41 @@ class SentinelaPipeline:
         if not p.exists():
             raise ValueError(f"{label} not found: {p}")
         return p
+
+    @staticmethod
+    def _merge_video_scores(current: ModalityScore | None, incoming: ModalityScore, label: str) -> ModalityScore:
+        if current is None:
+            return incoming
+
+        sub_scores = dict((current.evidence or {}).get("sub_scores") or {})
+        current_mode = str((current.evidence or {}).get("mode") or "pose")
+        if current_mode not in sub_scores:
+            sub_scores[current_mode] = {
+                "score": current.score_0_1,
+                "confidence": current.confidence_0_1,
+            }
+        sub_scores[label] = {
+            "score": incoming.score_0_1,
+            "confidence": incoming.confidence_0_1,
+        }
+
+        weighted_total = sum(float(v["score"]) * float(v["confidence"]) for v in sub_scores.values())
+        confidence_total = sum(float(v["confidence"]) for v in sub_scores.values())
+        combined = weighted_total / confidence_total if confidence_total else max(float(v["score"]) for v in sub_scores.values())
+        confidence = min(1.0, confidence_total / max(1, len(sub_scores)))
+
+        evidence = {
+            **(current.evidence or {}),
+            label: incoming.evidence,
+            "mode": "specialized_video_fusion",
+            "sub_scores": sub_scores,
+        }
+        return ModalityScore(
+            modality="video",
+            score_0_1=round(max(0.0, min(1.0, combined)), 3),
+            confidence_0_1=round(max(0.0, min(1.0, confidence)), 3),
+            evidence=evidence,
+        )
 
     @staticmethod
     def write_report(report: dict[str, Any], out: str | Path) -> Path:

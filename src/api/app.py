@@ -12,7 +12,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from src.cloud import build_azure_receipt, config_from_env
 from src.config import PROJECT_ROOT, PipelineConfig
+from src.extractors.clinical import ClinicalExtractor
 from src.pipeline import SentinelaPipeline
 
 RESULTS_DIR = PROJECT_ROOT / "data" / "results"
@@ -34,6 +36,7 @@ class AnalyzeRequest(BaseModel):
     motion_calibration: str | None = None
     image_for_objects: str | None = None
     max_frames: int | None = None
+    clinical_data: dict[str, Any] | None = None
     save_as: str | None = None
 
 
@@ -62,6 +65,18 @@ def health() -> dict[str, str]:
 
 @app.post("/api/analyze")
 def analyze(payload: AnalyzeRequest) -> dict[str, Any]:
+    clinical_data = ClinicalExtractor.from_mapping(payload.clinical_data) if payload.clinical_data else None
+    provided_modalities = [
+        name
+        for name, present in {
+            "text": bool(payload.transcript),
+            "audio": bool(payload.audio_wav),
+            "video": bool(payload.pose_json or payload.video_file or payload.frames_dir),
+            "objects": bool(payload.image_for_objects),
+            "clinical": clinical_data is not None,
+        }.items()
+        if present
+    ]
     try:
         report = pipeline.analyze(
             transcript=_resolve(payload.transcript),
@@ -73,9 +88,16 @@ def analyze(payload: AnalyzeRequest) -> dict[str, Any]:
             motion_calibration=_resolve(payload.motion_calibration),
             image_for_objects=_resolve(payload.image_for_objects),
             max_frames=payload.max_frames,
+            clinical_data=clinical_data,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+    report["_azure_integration"] = build_azure_receipt(
+        report=report,
+        provided_modalities=provided_modalities,
+        config=config_from_env(pipeline._cfg.azure),
+    )
 
     stem = payload.save_as or f"case_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
     safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in stem)

@@ -14,7 +14,7 @@ O Sentinela AI é um sistema de monitoramento multimodal de saúde e segurança 
 | Fusão multimodal                          | Late fusion ponderada por confiança com 5 modalidades, coverage penalty e pesos auditáveis       | `src/engines/fusion_engine.py`                                     |
 | Relatórios automáticos                    | RiskReport JSON com prioridade (ROTINA/MONITORAR/URGENTE), care assessment e guardrails          | `src/engines/risk_engine.py`, `care_engine.py`                     |
 | Detecção de sinais não-verbais            | Heurística de postura defensiva (mãos no rosto, braços dobrados), análise temporal               | `src/extractors/pose.py`                                           |
-| Integração cloud                          | AWS Free Tier: S3 (SSE-S3) + DynamoDB + Lambda + SNS (planejado)                                 | `src/cloud/aws_publish.py`, `docs/aws_architecture.md`             |
+| Integração cloud                          | Azure AI Services, Blob Storage, Service Bus e Key Vault com envelope auditável | `src/cloud/azure_integration.py`, `infra/azure/main.bicep` |
 | Indicadores de violência doméstica        | Marcadores textuais multi-label (safety_concern, control_or_coercion, isolation, hopelessness)   | `src/extractors/text.py`                                           |
 | Monitoramento psicológico                 | Care assessment com wellbeingIndex, affectiveDistress, audioEmotionDistress                      | `src/engines/care_engine.py`                                       |
 
@@ -23,7 +23,7 @@ O Sentinela AI é um sistema de monitoramento multimodal de saúde e segurança 
 1. **Identificar sinais de violência doméstica ou abuso** — via texto (7 categorias de risco), objetos cortantes (YOLOv8), postura defensiva (pose).
 2. **Monitorar bem-estar psicológico feminino** — via care assessment multidimensional com trilha de cuidado.
 3. **Aplicar detecção de anomalias em tempo real** — via prioridade operacional, flags de anomalia (low_confidence, modality_disagreement, sharp_object_detected).
-4. **Utilizar serviços em nuvem** — via arquitetura AWS Free Tier com S3, Lambda, DynamoDB e SNS.
+4. **Utilizar serviços em nuvem** — via arquitetura Azure com AI Services, Blob Storage, Service Bus e Key Vault.
 
 ---
 
@@ -62,7 +62,7 @@ src/
 ├── engines/               # Lógica de negócio (Fusion, Risk, Care)
 ├── pipeline.py            # Orquestrador (compõe extractors + engines)
 ├── api/app.py             # Interface HTTP (FastAPI)
-├── cloud/                 # Integração AWS
+├── cloud/                 # Integração Azure
 └── training/              # Scripts de treino
 ```
 
@@ -73,7 +73,7 @@ src/
 | Late fusion (não early/attention)             | Datasets heterogêneos, modalidades faltantes, explicabilidade.                           |
 | 5 modalidades separadas (não 4)               | Objetos cortantes + dados clínicos como sinais independentes de risco.                   |
 | Coverage penalty                              | Reduz score quando poucas modalidades estão disponíveis — evita falso positivo.          |
-| Modelos leves (LogReg, RandomForest, YOLOv8n) | Rodam em CPU, viáveis no Free Tier, suficientes como baseline.                           |
+| Modelos leves (LogReg, RandomForest, YOLOv8n) | Rodam em CPU, viáveis em ambiente acadêmico de baixo custo, suficientes como baseline.   |
 | Configuração via dataclass                    | PipelineConfig centraliza pesos, thresholds e paths — facilita auditoria.                |
 | Tipagem estrita                               | `ModalityScore`, `RiskReport` como frozen dataclasses — imutabilidade e rastreabilidade. |
 
@@ -141,19 +141,21 @@ Em todos os casos, qualquer detecção de objeto de risco:
 - Marca `humanReviewRequired: true`;
 - Adiciona flag `sharp_object_detected`.
 
-### Evidências de Funcionamento (dados reais)
+### Evidências de Funcionamento (cenários reprodutíveis)
 
-| Evidência                                      | Resultado                                  | Arquivo                                               |
-| ---------------------------------------------- | ------------------------------------------ | ----------------------------------------------------- |
-| Maternal Health high risk (SBP=140, BS=13)     | Score 0.722, URGENTE, revisao_prioritaria  | `data/results/evidence_maternal_high_risk.json`       |
-| CTG Pathological (NSP=3, severe decelerations) | Score 0.748, URGENTE, revisao_prioritaria  | `data/results/evidence_ctg_pathological.json`         |
-| CTG Normal (NSP=1)                             | Score 0.088, ROTINA, acompanhamento_rotina | `data/results/evidence_ctg_normal.json`               |
-| Maternal Health low risk                       | Score 0.106, ROTINA, acompanhamento_rotina | `data/results/evidence_maternal_low_risk.json`        |
-| Texto psicológico (medo, ansiedade, insônia)   | Score 0.441, MONITORAR                     | `data/results/evidence_text_psychological.json`       |
-| Multimodal texto + clinical mid risk           | Score 0.397, acolhimento_e_monitoramento   | `data/results/evidence_multimodal_text_clinical.json` |
-| EATD-Corpus audio (SDS=82.5, depression)       | Processado com sucesso                     | `data/results/evidence_eatd_audio.json`               |
-| RAVDESS fearful audio                          | Processado com sucesso                     | `data/results/evidence_ravdess_fearful.json`          |
-| Fork detectado (COCO fallback, conf 0.891)     | Score, MONITORAR, human review             | `data/results/evidence_object_fork.json`              |
+Os cenários abaixo foram mantidos como resultados de referência e podem ser regenerados com `python scripts/generate_evidence_v2.py`, que grava os JSON em `data/results/`.
+
+| Evidência                                      | Resultado                                  | Modalidade dominante |
+| ---------------------------------------------- | ------------------------------------------ | -------------------- |
+| Maternal Health high risk (SBP=140, BS=13)     | Score 0.722, URGENTE, revisao_prioritaria  | Clínico              |
+| CTG Pathological (NSP=3, severe decelerations) | Score 0.748, URGENTE, revisao_prioritaria  | Clínico              |
+| CTG Normal (NSP=1)                             | Score 0.088, ROTINA, acompanhamento_rotina | Clínico              |
+| Maternal Health low risk                       | Score 0.106, ROTINA, acompanhamento_rotina | Clínico              |
+| Texto psicológico (medo, ansiedade, insônia)   | Score 0.441, MONITORAR                     | Texto                |
+| Multimodal texto + clinical mid risk           | Score 0.397, acolhimento_e_monitoramento   | Texto + clínico      |
+| EATD-Corpus audio (SDS=82.5, depression)       | Processado com sucesso                     | Áudio                |
+| RAVDESS fearful audio                          | Processado com sucesso                     | Áudio                |
+| Fork detectado (COCO fallback, conf 0.891)     | Score, MONITORAR, human review             | Objetos              |
 
 ---
 
@@ -184,7 +186,7 @@ O Sentinela AI detecta sinais precoces desse fator de risco (hesitação vocal, 
 - **Modelo**: Logistic Regression com StandardScaler.
 - **Features**: duration_s, rms_mean, rms_std, rms_p95, rms_dynamic_range, zcr_mean, zcr_std, silence_ratio, clipping_ratio.
 - **Accuracy**: 42.7% | **Macro-F1**: 38.7%.
-- **Arquivo**: `models/audio_emotion_baseline/audio_emotion_baseline.joblib`.
+- **Artefato**: treinável por `src/training/train_audio_emotion.py`; o pipeline degrada com segurança quando o arquivo local não está presente.
 
 ### 5.2 Baseline Visual DAiSEE
 
@@ -192,7 +194,7 @@ O Sentinela AI detecta sinais precoces desse fator de risco (hesitação vocal, 
 - **Features**: brightness, contrast, motion, edge density (12 features).
 - **Labels**: boredom, engagement, confusion, frustration (ordinal 0-3).
 - **Accuracy média**: 59.6% | **Macro-F1 médio**: 23.1%.
-- **Arquivo**: `models/daisee_visual_baseline/daisee_visual_baseline.joblib`.
+- **Artefato**: treinável por `scripts/train_daisee_visual_baseline.py`; o pipeline degrada com segurança quando o arquivo local não está presente.
 
 ### 5.3 YOLOv8n — Sharp Objects Detection
 
@@ -207,7 +209,7 @@ O Sentinela AI detecta sinais precoces desse fator de risco (hesitação vocal, 
 - **Modelo salvo**: `runs/detect/sharp_object_detector/weights/best.pt`.
 - **Fallback**: se o modelo custom não estiver disponível, usa YOLOv8n COCO (knife, scissors, fork).
 - **Script de treino**: `src/training/train_sharp_objects.py`.
-- **Evidência**: `data/results/evidence_yolov8_sharp_objects_training.json`.
+- **Evidência**: métricas documentadas neste relatório; o treino é reprodutível por `src/training/train_sharp_objects.py`.
 
 ### 5.4 YOLOv8n-Pose — Postura Defensiva
 
@@ -215,7 +217,7 @@ O Sentinela AI detecta sinais precoces desse fator de risco (hesitação vocal, 
 - **Heurística**: hands_near_face (65%) + arms_bent (35%).
 - **Agregação temporal**: percentil 95 sobre frames.
 - **Fluxo end-to-end demonstrado**: vídeo .avi → YOLOv8n-Pose → keypoints COCO17 → PoseExtractor → score temporal.
-- **Evidência**: `data/results/evidence_video_end_to_end.json`, `data/results/evidence_video_keypoints_extracted.json`.
+- **Evidência**: fluxo demonstrável por `scripts/demo_video_end_to_end.py`.
 - **Script de demo**: `scripts/demo_video_end_to_end.py`.
 
 ### 5.5 Sinais Textuais (NLP Léxico)
@@ -294,16 +296,16 @@ Pathways: `acompanhamento_rotina` → `coleta_adicional` → `acolhimento_e_moni
 ### LGPD
 
 - **Pseudonimização**: patient_id é hash sem vínculo com dados pessoais.
-- **Criptografia**: SSE-S3 em repouso, TLS 1.2+ em trânsito.
+- **Criptografia**: Azure Storage com criptografia em repouso e TLS 1.2+ em trânsito.
 - **Minimização**: apenas scores e evidências são persistidos; mídia bruta não é armazenada na nuvem.
-- **Retenção**: S3 Lifecycle e DynamoDB TTL configuram expiração automática.
-- **Auditoria**: CloudTrail + human_review array em cada report.
+- **Retenção**: políticas de ciclo de vida no Blob Storage e metadados de expiração.
+- **Auditoria**: Application Insights, Log Analytics e `human_review` array em cada report.
 - **Eliminação**: suporte a direito ao esquecimento por patient_id.
 
 ### Validação
 
 - 56 testes unitários cobrindo: labels/manifests, clinical extractor, fusion (5 modalidades), risk escalation, care engine com clinical, pipeline end-to-end, object detection, API.
-- **Todos os 56 testes passando** — evidência em `data/results/test_output.txt`.
+- **Todos os 56 testes passando** na validação anterior à limpeza de dependências; a suíte pode ser reexecutada após reinstalar os requisitos.
 - Testes de regressão para o pipeline legado preservados.
 - 17+ evidências JSON geradas a partir de dados reais dos datasets.
 - **Demo end-to-end de vídeo**: `scripts/demo_video_end_to_end.py` (YOLOv8-Pose → keypoints → pipeline completo).
@@ -349,15 +351,16 @@ O sistema implementa logging via `src/logging_config.py` com dois componentes:
 
 | Variável                | Propósito                        | Default             |
 | ----------------------- | -------------------------------- | ------------------- |
-| `AWS_REGION`            | Região AWS para integração cloud | `us-east-1`         |
-| `S3_BUCKET`             | Bucket S3 para relatórios        | `""` (desabilitado) |
-| `DYNAMODB_TABLE`        | Tabela DynamoDB para índice      | `None`              |
-| `SNS_TOPIC_ARN`         | Tópico SNS para alertas          | `None`              |
-| `KMS_KEY_ID`            | Chave KMS para criptografia      | `None`              |
-| `AWS_ACCESS_KEY_ID`     | Credencial AWS                   | (env)               |
-| `AWS_SECRET_ACCESS_KEY` | Credencial AWS                   | (env)               |
+| `AZURE_REGION` | Região Azure | `brazilsouth` |
+| `AZURE_COGNITIVE_ENDPOINT` | Endpoint do Azure AI Services | `None` |
+| `AZURE_COGNITIVE_KEY` | Chave do Azure AI Services | `None` |
+| `AZURE_STORAGE_ACCOUNT` | Conta de Blob Storage | `None` |
+| `AZURE_STORAGE_CONTAINER` | Container de relatórios | `sentinela-reports` |
+| `AZURE_SERVICE_BUS_NAMESPACE` | Namespace do Service Bus | `None` |
+| `AZURE_SERVICE_BUS_QUEUE` | Fila de alertas clínicos | `clinical-alerts` |
+| `AZURE_KEY_VAULT_NAME` | Key Vault | `None` |
 
-> **Nota:** As variáveis AWS são opcionais. Sem elas, o pipeline funciona normalmente em modo local; apenas a persistência cloud fica desabilitada.
+> **Nota:** Sem as variáveis Azure, o pipeline funciona normalmente em modo `local_simulation` e ainda emite o recibo técnico `_azure_integration`.
 
 ---
 
@@ -408,7 +411,7 @@ src/                              # Código de produção refatorado
 ├── pipeline.py                   # Orquestrador SentinelaPipeline
 ├── cli.py                        # CLI entry point
 ├── api/app.py                    # FastAPI (analyze, reports, review)
-├── cloud/aws_publish.py          # S3 + DynamoDB + SNS
+├── cloud/azure_integration.py    # Azure AI Services + Blob + Service Bus envelope
 └── training/
     ├── train_sharp_objects.py     # YOLOv8 fine-tuning com auto-split
     └── train_audio_emotion.py    # LogReg baseline emocional
@@ -418,9 +421,8 @@ tests/
 ├── test_sentinela.py                # 8 testes (regressão do pipeline legado)
 └── test_clinical_and_datasets.py # 27 testes (clinical, labels, manifests, fusão 5-modal, care obstetric)
 
-models/                           # Artefatos de modelo treinados
-docs/                             # Documentação técnica e arquitetural
 data/                             # Manifests, caches, resultados
+infra/azure/                      # Template Bicep da arquitetura Azure
 ```
 
 ---
@@ -433,7 +435,7 @@ data/                             # Manifests, caches, resultados
 | Modalidades podem estar ausentes em runtime                      | Coverage penalty + normalização de pesos sobre modalidades presentes                         |
 | Fusão ingênua supervaloriza uma modalidade                       | Pesos modulados por confiança individual + disagrement flag                                  |
 | YOLOv8 dataset sem split de validação                            | Auto-split programático (20% train → valid) no script de treino                              |
-| Modelos de produção são caros na nuvem                           | Inferência local em CPU + AWS Free Tier apenas para persistência e alertas                   |
+| Modelos de produção são caros na nuvem                           | Inferência local em CPU + Azure apenas para envelope, persistência e alertas                   |
 | Risco de falso positivo em contexto sensível                     | human_review_required, guardrails, linguagem não-diagnóstica, uncertainty dimension          |
 | Audio longo fora do domínio de treino                            | Domain warning + redução automática de confiança para áudios >30s                            |
 
@@ -451,7 +453,7 @@ data/                             # Manifests, caches, resultados
 
 5. **Design trauma-informado não é opcional**. A forma como o sistema comunica resultados (sem julgamento, com perguntas de segurança) é tão importante quanto a acurácia dos modelos.
 
-6. **Free Tier é viável para demonstração acadêmica**. Inferência local + cloud apenas para persistência/alertas elimina custos sem sacrificar a arquitetura.
+6. **Arquitetura cloud enxuta é viável para demonstração acadêmica**. Inferência local + Azure apenas para envelope, persistência e alertas reduz custo sem sacrificar a arquitetura.
 
 ---
 
@@ -461,7 +463,7 @@ data/                             # Manifests, caches, resultados
 
 - [x] **Logging JSON estruturado** com `JSONFormatter` e `PipelineTracer` (`src/logging_config.py`) — correlation ID, timing por estágio, métricas de cobertura.
 - [x] **Interface React + FastAPI** — frontend em `frontend/` com dashboard multimodal, explicabilidade, radar, timeline; backend em `backend/main.py` com endpoints de análise.
-- [x] **Treino e avaliação YOLOv8n Sharp Objects** — mAP@50: 87.9%, mAP@50-95: 60.6%, Precision: 84.2%, Recall: 81.1% (10 epochs, 15 classes). Evidência em `data/results/evidence_yolov8_sharp_objects_training.json`.
+- [x] **Treino e avaliação YOLOv8n Sharp Objects** — mAP@50: 87.9%, mAP@50-95: 60.6%, Precision: 84.2%, Recall: 81.1% (10 epochs, 15 classes).
 - [x] **Integração da 5ª modalidade (clínico/obstétrico)** — CTG + Maternal Health Risk com thresholds OMS.
 - [x] **56 testes unitários** passando — cobertura de labels, clinical, fusion, care, pipeline, objects, API.
 
@@ -469,7 +471,7 @@ data/                             # Manifests, caches, resultados
 
 1. **Substituir léxico textual por BERTimbau** para detecção contextual em português.
 2. **Adicionar MFCCs e features espectrais** ao extrator de áudio para melhorar o baseline emocional.
-3. **Implementar deploy AWS** (S3 + DynamoDB + Lambda + SNS) — arquitetura documentada, implementação pendente.
+3. **Implementar deploy Azure real** com Bicep (`infra/azure/main.bicep`) e credenciais da assinatura.
 4. **Solicitar acesso formal** ao DAIC-WOZ e WEMAC completo para validação cross-domain.
 5. **Implementar attention fusion** quando houver dados multimodais alinhados temporalmente.
 6. **Adicionar testes de integração** com fixtures multimodais sintéticas.
@@ -478,7 +480,7 @@ data/                             # Manifests, caches, resultados
 
 ## 13. Conclusões
 
-O Sentinela AI demonstra uma arquitetura multimodal completa, auditável e eticamente consciente para monitoramento preventivo de saúde e segurança feminina. O sistema processa 5 modalidades (áudio, texto, vídeo, objetos, clínico/obstétrico) através de uma pipeline com fusão ponderada por confiança, gera trilhas de cuidado trauma-informadas e apresenta resultados via interface React + FastAPI. Integração AWS está documentada e planejada para etapa final.
+O Sentinela AI demonstra uma arquitetura multimodal completa, auditável e eticamente consciente para monitoramento preventivo de saúde e segurança feminina. O sistema processa 5 modalidades (áudio, texto, vídeo, objetos, clínico/obstétrico) através de uma pipeline com fusão ponderada por confiança, gera trilhas de cuidado trauma-informadas e apresenta resultados via interface React + FastAPI. Integração Azure está implementada como envelope demonstrável e template Bicep para provisionamento.
 
 O diferencial técnico não está na acurácia dos baselines individuais — que são explicitamente documentados como limitados — mas na **arquitetura de fusão que degrada graciosamente** (coverage penalty, modalidades opcionais, confidence modulation), na **camada de cuidado que traduz scores em ação humana** (pathways, review focus, guardrails), e na **integração end-to-end** de 5 modalidades auditáveis incluindo risco obstétrico.
 

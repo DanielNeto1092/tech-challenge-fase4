@@ -15,6 +15,9 @@ SIGNAL_LEXICON: dict[str, dict[str, Any]] = {
     "physical_symptom": {"weight": 0.60, "terms": ["dor", "cabeca", "peito", "falta de ar", "enjoo", "tremor", "insonia", "cansaco", "fadiga"]},
     "psychological_distress": {"weight": 0.90, "terms": ["ansiedade", "tristeza", "panico", "choro", "angustia", "nervosa", "culpa", "vergonha", "medo"]},
     "support_network_absent": {"weight": 0.65, "terms": ["sem apoio", "nao tenho com quem falar", "ninguem acredita", "nao posso contar", "sem familia", "sem amigos"]},
+    "postpartum_depression": {"weight": 0.90, "terms": ["pos-parto", "puerperio", "baby blues", "depressao pos-parto", "nao consigo cuidar", "rejeicao ao bebe", "sem vinculo", "culpa com o bebe"]},
+    "gestational_anxiety": {"weight": 0.80, "terms": ["pre-natal", "gestacao", "gravidez", "ansiedade gestacional", "medo do parto", "batimentos fetais", "pressao alta", "pre-eclampsia"]},
+    "gynecological_risk": {"weight": 0.70, "terms": ["sangramento anormal", "sangramento intenso", "dor pelvica", "corrimento", "cirurgia ginecologica", "mama", "utero", "ovario"]},
 }
 INTENSIFIERS = {"sempre", "constantemente", "frequentemente", "repetidamente", "muito", "grave", "extremo"}
 HEDGES = {"talvez", "acho", "parece", "supostamente"}

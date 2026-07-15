@@ -4,9 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
-from src.api.app import app
+from src.api.app import AnalyzeRequest, analyze, health, reports
 from src.pipeline import SentinelaPipeline
 from src.extractors.text import TextExtractor
 
@@ -31,13 +29,24 @@ class SentinelaCoreTests(unittest.TestCase):
         self.assertIn("priority", report)
 
     def test_api_health_and_reports(self) -> None:
-        client = TestClient(app)
-        health = client.get("/api/health")
-        self.assertEqual(health.status_code, 200)
-        self.assertEqual(health.json()["status"], "ok")
-        reports = client.get("/api/reports")
-        self.assertEqual(reports.status_code, 200)
-        self.assertIn("reports", reports.json())
+        self.assertEqual(health()["status"], "ok")
+        self.assertIn("reports", reports())
+
+    def test_api_json_accepts_clinical_data_and_returns_azure_receipt(self) -> None:
+        payload = analyze(
+            AnalyzeRequest(
+                clinical_data={
+                    "risk_label": "high risk",
+                    "body_temp": 38.2,
+                    "body_temp_unit": "C",
+                    "source": "test",
+                },
+                save_as="api_clinical_test",
+            )
+        )
+        self.assertIn("clinical", payload["modality_scores"])
+        self.assertIn("_azure_integration", payload)
+        self.assertEqual(payload["_azure_integration"]["provider"], "azure")
 
     def test_analyze_rejects_missing_transcript(self) -> None:
         pipe = SentinelaPipeline()

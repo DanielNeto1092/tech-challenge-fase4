@@ -166,6 +166,25 @@ class TestClinicalExtractor(unittest.TestCase):
         self.assertIn("hypertension", ms.evidence["signals"])
         self.assertIn("tachycardia", ms.evidence["signals"])
 
+    def test_body_temperature_celsius_detects_fever(self):
+        clinical = ClinicalInput(body_temp=38.2, body_temp_unit="C", source="test")
+        ms = self.extractor.score(clinical)
+        self.assertIn("fever", ms.evidence["signals"])
+        self.assertEqual(ms.evidence["body_temp_unit"], "C")
+
+    def test_from_mapping_accepts_ctg_and_maternal_risk_fields(self):
+        clinical = ClinicalExtractor.from_mapping({
+            "risk_label": "high risk",
+            "nsp_class": 3,
+            "baseline_fhr": 175,
+            "body_temp": 38.1,
+            "body_temp_unit": "C",
+        })
+        self.assertEqual(clinical.risk_label, "high risk")
+        self.assertEqual(clinical.nsp_class, 3)
+        self.assertEqual(clinical.baseline_fhr, 175.0)
+        self.assertEqual(clinical.body_temp_unit, "C")
+
     def test_from_maternal_csv_row(self):
         row = {"Age": "35", "SystolicBP": "140", "DiastolicBP": "90",
                "BS": "13", "BodyTemp": "98", "HeartRate": "70", "RiskLevel": "high risk"}
